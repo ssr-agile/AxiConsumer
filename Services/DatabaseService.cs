@@ -6,6 +6,7 @@ using RmqConsumerService.Models;
 using RmqConsumerService.Services.Interfaces;
 using System.Net.Http;
 using System.Net.Http.Json;
+using Polly;
 
 namespace RmqConsumerService.Services;
 
@@ -14,15 +15,18 @@ public sealed class DatabaseService : IDatabaseService
     private readonly DatabaseSettings _settings;
     private readonly ILogger<DatabaseService> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
+    //private readonly NpgsqlDataSource _adminDb;
 
     public DatabaseService(
         IOptions<DatabaseSettings> settings,
         ILogger<DatabaseService> logger,
         IHttpClientFactory httpClientFactory)
+        //NpgsqlDataSource adminDb)
     {
         _settings = settings.Value;
         _logger = logger;
         _httpClientFactory = httpClientFactory;
+        //_adminDb = adminDb;
     }
 
     public async Task<bool> CreateDatabaseAndSchemaAsync(string axiaAcId, string email, CancellationToken ct)
@@ -36,7 +40,15 @@ public sealed class DatabaseService : IDatabaseService
         try
         {
             // 1. Clone the DB (Admin Connection)
-            await CloneDatabaseFromTemplateAsync(identifier, ct);
+            var retryPolicy = Policy
+                .Handle<NpgsqlException>(ex => ex.IsTransient)
+                .Or<TimeoutException>()
+                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                await CloneDatabaseFromTemplateAsync(identifier, ct);
+            });
 
             // 2. Setup Schema & Initial User (Tenant Connection)
             await ApplyPostCloneFixesAndSeedAsync(identifier, email, ct);
@@ -125,6 +137,7 @@ public sealed class DatabaseService : IDatabaseService
         // ── 5. Clone — must be outside transaction ────────────────────────────
         await using (var cmd = conn.CreateCommand())
         {
+            cmd.CommandTimeout = 300; // 5 minutes
             cmd.CommandText = $"CREATE DATABASE \"{dbName}\" TEMPLATE \"{template}\" OWNER = \"{dbName}\"";
             await cmd.ExecuteNonQueryAsync(ct);
             _logger.LogInformation("Database '{Db}' cloned from '{Template} & set OWNER to '{owner}'.", dbName, template, dbName);
@@ -235,7 +248,7 @@ public sealed class DatabaseService : IDatabaseService
         await using var conn = new NpgsqlConnection(_settings.BuildConnectionString(dbName));
         await conn.OpenAsync(ct);
 
-        const string sql = "UPDATE axusers SET authkey = @ak, userkey = @uk WHERE username = @u";
+        var sql = $"UPDATE {dbName}.axusers SET authkey = @ak, userkey = @uk WHERE email = @u";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("ak", authKey ?? (object)DBNull.Value);
         cmd.Parameters.AddWithValue("uk", userKey ?? (object)DBNull.Value);

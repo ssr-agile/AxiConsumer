@@ -25,17 +25,18 @@ public class ConfigurationFileService : IConfigurationFileService
         // 1. Load source files
         string iniPath = Path.Combine(_appConnSettings.AxpertWebScriptsPath, "AppSettings.ini");
         string xmlPath = Path.Combine(_appConnSettings.AxpertWebScriptsPath, "axapps.xml");
+        string templateConnection = _dbSettings.AxiAdminName;
 
         // 2. Process AppSettings.ini (JSON Logic)
         var jsonContent = await File.ReadAllTextAsync(iniPath, ct);
         var root = JsonNode.Parse(jsonContent);
-        CloneJsonSection(root!, "appconnections", "axiadmin", newAxiAcId);
-        CloneJsonSection(root!, "appsettings", "axiadmin", newAxiAcId);
+        CloneJsonSection(root!, "appconnections", templateConnection, newAxiAcId);
+        CloneJsonSection(root!, "appsettings", templateConnection, newAxiAcId);
         string updatedJson = root!.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
 
         // 3. Process axapps.xml (XML Logic)
         var xmlDoc = XDocument.Load(xmlPath);
-        CloneXmlNode(xmlDoc, "axiadmin", newAxiAcId);
+        CloneXmlNode(xmlDoc, templateConnection, newAxiAcId);
         string updatedXml = xmlDoc.ToString();
 
         string[] configDestinationPaths = [_appConnSettings.AxpertWebScriptsPath, _appConnSettings.ARMWebScriptsPath];
@@ -45,6 +46,8 @@ public class ConfigurationFileService : IConfigurationFileService
             await BackupAndSave(destDir, "AppSettings.ini", updatedJson, ct);
             await BackupAndSave(destDir, "axapps.xml", updatedXml, ct);
         }
+
+        await BackupAndSave(_appConnSettings.ARMAPIPath, "AppSettings.ini", updatedJson, ct);
 
         return true;
     }
@@ -57,7 +60,7 @@ public class ConfigurationFileService : IConfigurationFileService
             var newNode = JsonNode.Parse(section[templateKey]!.ToJsonString());
             // Update dbuser specifically if needed (e.g., axiadmin\axidb -> newAcId\axidb)
             if (newNode!["dbuser"] != null)
-                newNode["dbuser"] = $"{newKey}\\{newKey}";
+                newNode["dbuser"] = $"{newKey.ToLower()}\\{newKey.ToLower()}";
 
             section[newKey] = newNode;
             _logger.LogDebug("Cloned JSON section {Section}:{NewKey}", sectionName, newKey);
@@ -75,7 +78,7 @@ public class ConfigurationFileService : IConfigurationFileService
 
             // Update dbuser element
             var dbUser = newNode.Element("dbuser");
-            if (dbUser != null) dbUser.Value = $"{newName}\\{newName}";
+            if (dbUser != null) dbUser.Value = $"{newName.ToLower()}\\{newName.ToLower()}";
 
             connections!.Add(newNode);
             _logger.LogDebug("Cloned XML node: {NewName}", newName);

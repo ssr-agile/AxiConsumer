@@ -7,12 +7,14 @@ using Serilog;
 using Serilog.Events;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using System.Net.Http;
+//using Npgsql;
+//using Npgsql.NpgsqlDataSource;
 
 
 // ── Bootstrap configuration (needed before Host is built) ────────────────────
 var configuration = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile("axiglobalconfig.json", optional: false, reloadOnChange: true)
     .AddEnvironmentVariables()           // env vars override appsettings (12-factor)
     .Build();
 
@@ -45,7 +47,13 @@ try
     Log.Information("═══════════════════════════════════════════");
 
     await Host.CreateDefaultBuilder(args)
-        .UseSerilog()
+        .ConfigureAppConfiguration((context, config) =>
+        {
+            config.Sources.Clear(); // optional but recommended to avoid conflicts
+            config.SetBasePath(Directory.GetCurrentDirectory());
+            config.AddJsonFile("axiglobalconfig.json", optional: false, reloadOnChange: true);
+            config.AddEnvironmentVariables();
+        }).UseSerilog()
         .UseWindowsService()                    // runs cleanly as a Windows Service or console app
         .ConfigureServices((ctx, services) =>
         {
@@ -59,6 +67,8 @@ try
             // ── Core services ─────────────────────────────────────────────────
             // Singleton: shared across the lifetime of the app
             services.AddSingleton<IRabbitMqConsumer, RabbitMqConsumerService>();
+            //services.AddSingleton<NpgsqlDataSource>();
+            //services.AddNpgsqlDataSource(connectionString);
             services.AddHttpClient();
 
             // Transient: fresh instance per message (created inside a DI scope)
