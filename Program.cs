@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting.WindowsServices;
+using Npgsql;
 using RmqConsumerService;
 using RmqConsumerService.Configuration;
 using RmqConsumerService.Handlers;
@@ -5,10 +8,7 @@ using RmqConsumerService.Services;
 using RmqConsumerService.Services.Interfaces;
 using Serilog;
 using Serilog.Events;
-using Microsoft.Extensions.Hosting.WindowsServices;
 using System.Net.Http;
-using Npgsql;
-//using Npgsql.NpgsqlDataSource;
 
 
 // ── Bootstrap configuration (needed before Host is built) ────────────────────
@@ -79,14 +79,23 @@ try
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
             // Singleton DataSource for admin DB — one pool, shared safely
-            services.AddNpgsqlDataSource(adminConnStr);
+            //services.AddNpgsqlDataSource(adminConnStr);
+
+            // Admin DataSource — role management, global PG operations
+            services.AddNpgsqlDataSource(
+                dbSettings.BuildConnectionString(dbSettings.AdminDatabase), serviceKey: "admin");
+
+            // Shared DataSource — all tenant schema operations (one pool, reused)
+            services.AddNpgsqlDataSource(
+                dbSettings.BuildConnectionString(dbSettings.SharedDatabase), serviceKey: "shared");
 
             // Transient: fresh instance per message (created inside a DI scope)
             services.AddTransient<IMessageProcessor, MessageProcessorService>();
             //services.AddTransient<IDatabaseService,  DatabaseService>();
             services.AddTransient<IEmailService,     EmailService>();
             services.AddTransient<IAdminDbService, AdminDbService>();
-            services.AddTransient<ITenantDbService, TenantDbService>();
+            //services.AddTransient<ITenantDbService, TenantDbService>();
+            services.AddTransient<ITenantProvisionService, TenantProvisionService>();
             services.AddTransient<ILicenseService, LicenseService>();
             services.AddTransient<IDatabaseOrchestrator, DatabaseOrchestrator>();
 

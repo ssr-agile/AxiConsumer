@@ -3,7 +3,7 @@
 ## Overview
 
 A **.NET 8 Worker Service** that runs as a Windows background service (or console app during development).  
-It connects to **RabbitMQ**, consumes messages one at a time, dispatches them to the correct handler, provisions a **PostgreSQL** database, updates connection files and sends an **HTML email** to the user via SMTP.
+It connects to **RabbitMQ**, consumes messages one at a time, dispatches them to the correct handler, provisions a **PostgreSQL tenant schema** inside a shared database by replaying ordered SQL migrations, updates application connection files, and sends an **HTML status email** via SMTP.
 
 ---
 
@@ -12,45 +12,66 @@ It connects to **RabbitMQ**, consumes messages one at a time, dispatches them to
 ```
 RmqConsumerService/
 │
-├── appsettings.json               ← All configuration (RMQ, DB, SMTP, Logging)
+├── axiglobalconfig.json            ← All configuration (RMQ, DB, SMTP, Logging, AppConnection)
 │
-├── Program.cs                     ← Host bootstrap, DI registration, Serilog setup
-├── Worker.cs                      ← BackgroundService entry-point
+├── Program.cs                      ← Host bootstrap, DI registration, Serilog + DataSource setup
+├── Worker.cs                       ← BackgroundService entry-point
 ├── RmqConsumerService.csproj
 │
-├── Configuration/                 ← Strongly-typed settings (bound from appsettings)
+├── Configuration/                  ← Strongly-typed settings (bound from axiglobalconfig.json)
 │   ├── RabbitMqSettings.cs
-│   ├── DatabaseSettings.cs
+│   ├── DatabaseSettings.cs         ← AdminDatabase, SharedDatabase, MigrationsPath, DefaultRolePassword, etc.
 │   ├── SmtpSettings.cs
-│   └── LogSettings.cs
+│   ├── LogSettings.cs
+│   └── AppConnectionSettings.cs
 │
-├── Models/                        ← Plain data models (no logic)
-│   ├── QueueMessage.cs            ← Outer RMQ envelope
-│   └── AxiAdminModels.cs          ← axiadmin-specific payload
+├── Models/                         ← Pure data models, no logic
+│   ├── QueueMessage.cs             ← Outer RMQ envelope
+│   ├── AxiAdminModels.cs           ← axiadmin payload (email, orgname, axiacid)
+│   └── LicenseModels.cs            ← LicenseRequest / LicenseResponse
 │
 ├── Services/
 │   ├── Interfaces/
-│   │   └── IServices.cs           ← IRabbitMqConsumer, IMessageProcessor,
-│   │                                 IDatabaseService, IEmailService,
-│   │                                 IConfigurationService
+│   │   └── IServices.cs            ← All service interfaces in one file
+│   │                                  IRabbitMqConsumer, IMessageProcessor,
+│   │                                  IDatabaseOrchestrator,
+│   │                                  IAdminDbService, ITenantProvisioningService,
+│   │                                  ITenantDbService, ILicenseService,
+│   │                                  IEmailService, IConfigurationFileService
 │   │
-│   ├── RabbitMqConsumerService.cs ← Connection, retry, ack/nack, scope-per-message
-│   ├── MessageProcessorService.cs ← Dispatches to IQueueHandler by ApiName
-│   ├── DatabaseService.cs         ← PostgreSQL provisioning (create DB + schema + dump)
-│   ├── ConfigurationFileService.cs ← Clones & renames keys in AppSettings.ini & axapps.xml
-│   └── EmailService.cs            ← MailKit SMTP sender
+│   ├── RabbitMqConsumerService.cs  ← Connection lifecycle, retry, ack/nack, DI scope per message
+│   ├── MessageProcessorService.cs  ← Dispatches to IQueueHandler by ApiName
+│   │
+│   ├── Database/
+│   │   ├── AdminDbService.cs       ← Role management (CREATE/DROP ROLE) via admin NpgsqlDataSource
+│   │   ├── TenantProvisioningService.cs  ← Runs ordered SQL migrations into the tenant schema
+│   │   ├── TenantDbService.cs      ← SeedUser, UpdateUserKeys via shared NpgsqlDataSource
+│   │   ├── LicenseService.cs       ← External HTTP license activation
+│   │   └── DatabaseOrchestrator.cs ← Coordinates all DB steps; owns retry + rollback logic
+│   │
+│   ├── ConfigurationFileService.cs ← Clones keys in AppSettings.ini & axapps.xml; backs up files
+│   └── EmailService.cs             ← MailKit SMTP sender
 │
 ├── Handlers/
-│   ├── IQueueHandler.cs           ← Contract every handler must implement
-│   └── AxiAdminHandler.cs         ← Orchestrates DB provisioning + email for "axiadmin"
+│   ├── IQueueHandler.cs            ← Contract every handler must implement
+│   └── AxiAdminHandler.cs          ← Orchestrates DB + config files + email for ApiName="axiadmin"
 │
 ├── Templates/
-│   └── EmailTemplates.cs          ← Self-contained HTML email builder (success / failure)
+│   └── EmailTemplates.cs           ← Self-contained HTML email builder (success / failure)
 │
-├── SqlDumps/
-│   └── schema_dump.sql            ← Template applied to every new tenant DB
+├── Migrations/                     ← SQL scripts executed in ordinal filename order per tenant
+│   ├── 001_create_schema.sql
+│   ├── 002_tables.sql
+│   ├── 003_sequences.sql
+│   ├── 004_constraints.sql
+│   ├── 005_indexes.sql
+│   ├── 006_views.sql
+│   ├── 007_functions.sql
+│   ├── 008_triggers.sql
+│   ├── 009_permissions.sql
+│   └── 100_seed_data_001.sql ...   ← Split seed files; run in filename order after permissions
 │
-└── Logs/                          ← Auto-created at runtime by Serilog
+└── Logs/                           ← Auto-created at runtime by Serilog
     └── rmq-consumer-YYYYMMDD.log
 ```
 
@@ -61,202 +82,258 @@ RmqConsumerService/
 ```
 RabbitMQ Broker
       │
-      │  (durable queue, prefetch=1)
+      │  (durable queue, prefetch=1, manual ack)
       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     Worker  (BackgroundService)             │
-│                                                             │
-│   RabbitMqConsumerService                                   │
-│   ├── Connection + Channel (auto-recovery)                  │
-│   ├── Deserialise QueueMessage                              │
-│   ├── Create DI scope per message                           │
-│   │                                                         │
-│   └── MessageProcessorService                               │
-│       └── Resolves IQueueHandler by ApiName                 │
-│           │                                                 │
-│           ▼  (ApiName == "axiadmin")                        │
-│       AxiAdminHandler                                       │
-│       ├── DatabaseService   → PostgreSQL                    │
-│       ├── ConfigFileService   → Connection files            │
-│       └── EmailService      → SMTP Server                   │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                    Worker  (BackgroundService)                    │
+│                                                                  │
+│  RabbitMqConsumerService                                         │
+│  ├── Persistent connection + channel (auto-recovery)             │
+│  ├── Deserialise QueueMessage envelope                           │
+│  ├── Apply optional timespanDelay                                │
+│  └── Create DI scope per message ──────────────────────────────┐ │
+│                                                                │ │
+│      MessageProcessorService                                   │ │
+│      └── Resolve IQueueHandler by ApiName                      │ │
+│          │                                                     │ │
+│          ▼  ApiName == "axiadmin"                              │ │
+│      AxiAdminHandler                                           │ │
+│      │                                                         │ │
+│      ├── DatabaseOrchestrator ─────────────────────────────┐  │ │
+│      │   ├── AdminDbService        → admin NpgsqlDataSource │  │ │
+│      │   │   └── EnsureRole (CREATE ROLE IF NOT EXISTS)     │  │ │
+│      │   │                                                  │  │ │
+│      │   ├── TenantProvisioningService → shared DataSource  │  │ │
+│      │   │   └── Run ordered .sql migrations                │  │ │
+│      │   │       (single transaction, checksum logged)      │  │ │
+│      │   │                                                  │  │ │
+│      │   ├── TenantDbService         → shared DataSource    │  │ │
+│      │   │   ├── SeedUserAsync (calls setup_new_user fn)    │  │ │
+│      │   │   └── UpdateUserKeysAsync (authkey, userkey)     │  │ │
+│      │   │                                                  │  │ │
+│      │   ├── LicenseService          → External HTTP API    │  │ │
+│      │   │                                                  │  │ │
+│      │   └── On failure → CleanupAsync                      │  │ │
+│      │       ├── TenantProvisioningService.CleanupSchemaAsync│  │ │
+│      │       └── AdminDbService.CleanupAsync (DROP ROLE)    │  │ │
+│      │                                                      └──┘ │
+│      ├── ConfigurationFileService                               │ │
+│      │   ├── Clone axiadmin section in AppSettings.ini          │ │
+│      │   ├── Clone <axiadmin> node in axapps.xml                │ │
+│      │   ├── Backup existing files (timestamped)                │ │
+│      │   └── Write to all configured destination paths          │ │
+│      │                                                          │ │
+│      └── EmailService → SMTP                                    │ │
+│          └── SendSuccessAsync / SendFailureAsync                └─┘
+└──────────────────────────────────────────────────────────────────┘
+
+PostgreSQL (single server)
+├── postgres (admin DB)           ← Used only for CREATE/DROP ROLE
+│   └── public.__schema_migrations ← Migration audit log (all tenants)
+└── axi_shared (shared DB)        ← All tenant schemas live here
+    ├── axiadmin   (golden schema — never modified at runtime)
+    ├── nexcore    (tenant schema)
+    ├── clientabc  (tenant schema)
+    └── ...
+```
+
+---
+
+## Provisioning Flow (step by step)
+
+```
+ 1. RMQ delivers message → OnMessageReceivedAsync
+ 2. Deserialise JSON → QueueMessage envelope
+ 3. Apply optional timespanDelay
+ 4. Create DI scope (isolates all services per message)
+ 5. MessageProcessorService resolves handler by ApiName
+ 6. AxiAdminHandler.HandleAsync
+ 7.   → Deserialise queuedata → AxiAdminData (email, orgname, axiacid)
+ 8.   → DatabaseOrchestrator.ProvisionTenantAsync(axiacid, email)
+ 9.       a. AdminDbService.EnsureRoleAsync       [admin DataSource]
+              → CREATE ROLE "<axiacid>" LOGIN PASSWORD '...' (idempotent)
+10.       b. TenantProvisioningService.ProvisionSchemaAsync  [shared DataSource]
+              → Open single connection + transaction
+              → EnsureMigrationLogAsync (CREATE TABLE IF NOT EXISTS public.__schema_migrations)
+              → For each .sql file in Migrations/ (ordinal order):
+                  - Skip if already logged for this schema (idempotent re-run)
+                  - Replace {schema} → "<axiacid>"
+                  - Execute (CommandTimeout = 0 — large schemas can take time)
+                  - Log to __schema_migrations with SHA-256 checksum
+              → COMMIT
+11.       c. TenantDbService.SeedUserAsync        [shared DataSource]
+              → Calls <schema>.setup_new_user(username, email, nickname)
+12.       d. LicenseService.ActivateAsync         [named HttpClient]
+              → POST to external license API
+              → Validate AuthKey + UserKey in response
+13.       e. TenantDbService.UpdateUserKeysAsync  [shared DataSource]
+              → UPDATE <schema>.axusers SET authkey, userkey WHERE email = ...
+14.       On any failure → rollback:
+              → TenantProvisioningService.CleanupSchemaAsync (DROP SCHEMA CASCADE + clear log)
+              → AdminDbService.CleanupAsync (DROP ROLE IF EXISTS)
+              → Re-throw (handler sends failure email)
+15.   → ConfigurationFileService.UpdateConfigsAsync
+          → Clone axiadmin section in AppSettings.ini (JSON)
+          → Clone <axiadmin> node in axapps.xml
+          → Backup existing files with timestamp
+          → Write to AxpertWebScriptsPath, ARMWebScriptsPath, ARMAPIPath
+16.   → EmailService.SendSuccessAsync / SendFailureAsync
+          → Build HTML from EmailTemplates
+          → Connect SMTP, authenticate, send, disconnect
+17. BasicAck → message removed from queue
+    (BasicNack + requeue:false on unhandled exception → dead-letter)
 ```
 
 ---
 
 ## Key Design Decisions
 
-| Concern | Decision | Why |
+| Concern | Decision | Rationale |
 |---|---|---|
-| **Extensibility** | `IQueueHandler` per API | Add a new handler → register in DI; zero changes elsewhere |
-| **Isolation** | New DI scope per message | Clean, no shared state between messages |
-| **Reliability** | Manual ack / nack | Message only removed from queue after successful processing |
-| **Retry** | `AutomaticRecoveryEnabled` on RMQ client + startup retry loop | Handles broker restarts transparently |
-| **Dead-letter** | `BasicNack(requeue: false)` on error | Poison messages don't loop forever |
-| **Security** | Identifier sanitised to `[a-z0-9_]` | Prevents SQL injection via axiaAcId |
-| **SQL atomicity** | Transaction wraps entire SQL dump | Partial schema application is impossible |
-| **Logging** | Serilog with conditional Debug level | `EnableDebug: false` in prod for performance |
+| **Tenant isolation** | Schema-per-tenant inside one shared DB | Cheaper than DB-per-tenant; PG schema isolation is strong; easier backups |
+| **Schema creation** | Ordered SQL migration scripts | Declarative, version-controlled, auditable; matches your existing tooling |
+| **Migration log** | `public.__schema_migrations` with SHA-256 checksum | Idempotent re-runs; drift detection if scripts change after provisioning |
+| **Connection pools** | Two keyed `NpgsqlDataSource` singletons (admin + shared) | One pool per logical DB; no re-auth overhead; thread-safe; shared across all messages |
+| **Tenant connections** | `NpgsqlDataSource.OpenConnectionAsync()` | Borrows from pool cleanly; `await using` guarantees return |
+| **Extensibility** | `IQueueHandler` per API | New API → new handler + 1 DI line; zero changes to infrastructure |
+| **Message isolation** | New DI scope per message | No shared state between concurrent or sequential messages |
+| **Reliability** | Manual ack/nack | Message removed from queue only after full success |
+| **Retry** | Polly exponential backoff in Orchestrator (not in services) | Retry is an orchestration concern; services stay simple and testable |
+| **Rollback** | Schema drop + role drop on any failure | Atomic provisioning — no half-provisioned tenants |
+| **Dead-letter** | `BasicNack(requeue: false)` on unhandled exception | Poison messages don't loop; inspectable in RMQ management UI |
+| **Security** | Identifier regex `^[a-z_][a-z0-9_]{0,62}$` at service boundary | PostgreSQL-safe; prevents injection even if Sanitise upstream is bypassed |
+| **Logging** | Serilog, `EnableDebug` flag, structured properties | Zero-cost debug path in prod; easy to add Graylog/Wazuh sink |
 
 ---
 
-## Message Flow (step by step)
+## Connection Pool Architecture
 
 ```
-1. RMQ delivers message → OnMessageReceivedAsync
-2. Deserialise JSON  →  QueueMessage
-3. Apply optional timespanDelay
-4. Create DI scope
-5. MessageProcessorService.ProcessAsync
-6.   → Find IQueueHandler where ApiName == message.ApiName
-7.   → AxiAdminHandler.HandleAsync
-8.       → Deserialise queuedata  →  AxiAdminData
-9.       → DatabaseService.CreateDatabaseAndSchemaAsync(axiaAcId)
-10.          a. Open admin DB connection
-11.          b. Check if DB exists  →  CREATE DATABASE if not
-12.          c. Open new DB connection  →  CREATE SCHEMA IF NOT EXISTS
-13.          d. Read schema_dump.sql, replace {{SCHEMA_NAME}}, execute in transaction / clones a template
-14.      → EmailService.SendSuccessAsync  (or SendFailureAsync)
-15.          a. Build HTML via EmailTemplates
-16.          b. Connect to SMTP, authenticate, send, disconnect
-17. BasicAck  →  message removed from queue
-```
+Program.cs registers two keyed NpgsqlDataSource singletons:
 
----
+  services.AddKeyedNpgsqlDataSource(adminConnStr,  serviceKey: "admin");
+  services.AddKeyedNpgsqlDataSource(sharedConnStr, serviceKey: "shared");
 
-## Configuration File Service
+Injection:
+  AdminDbService([FromKeyedServices("admin")] NpgsqlDataSource ds)
+  TenantProvisioningService([FromKeyedServices("shared")] NpgsqlDataSource ds)
+  TenantDbService([FromKeyedServices("shared")] NpgsqlDataSource ds)
 
-```
-Handles the secondary provisioning step for legacy application compatibility:
-
-Fetch: Reads AppSettings.ini (JSON) and axapps.xml (XML) from a master template directory defined in appsettings.json.
-
-Clone & Mutate: * In the .ini (JSON), it duplicates the axiadmin section under the new AxiAccountId key.
-
-In the .xml, it clones the <axiadmin> node and renames it.
-
-Backup & Distribute: * Creates a timestamped backup of existing config files in a ./axconnections/ sub-folder.
-
-Writes the updated files to multiple destination paths simultaneously to keep different app instances in sync.
-
+Why two, not one?
+  - Admin operations (CREATE ROLE, DROP ROLE) must target the admin/postgres DB
+  - Tenant operations must target the shared DB where schemas live
+  - Keeping pools separate avoids cross-DB command accidents
+  - Each pool is pre-configured once at startup (SSL, auth, timeouts)
 ```
 
 ---
 
-## Database Service
+## Migration Script Rules
 
-```
-Admin Connection: Used for CREATE DATABASE and managing the AdminDB registry.
-
-Tenant Connection: Used for executing internal setup functions (e.g., setup_new_user) and schema-level permissions.
-
-Safety: Implements a "Maintenance Role Exclusion" list in the connection terminator to ensure that high-availability tools are not disconnected during the cloning process.
-
-Registry: Tracks all successful provisions in a central AdminDB to facilitate global management and logging.
-
-```
+| Rule | Reason |
+|---|---|
+| Filenames must be zero-padded (e.g. `001_`, `100_seed_001_`) | Execution order = lexicographic sort order |
+| Every script must use `{schema}` — never hardcode schema names | `TenantProvisioningService` replaces it with the quoted tenant identifier |
+| Every script should set `SET LOCAL search_path = {schema}, pg_catalog;` | Unqualified identifiers inside functions resolve correctly |
+| Seed files must use `INSERT ... ON CONFLICT DO NOTHING` | Idempotent re-runs don't duplicate data |
+| Never rename a script after it has run in production | The migration log tracks by filename; a rename = re-execution |
 
 ---
 
-## Configuration Reference (`appsettings.json`)
+## Configuration Reference (`axiglobalconfig.json`)
 
 ### `RabbitMq`
 | Key | Default | Description |
 |---|---|---|
-| `Host` | `localhost` | Broker hostname or IP |
+| `Host` | `localhost` | Broker hostname |
 | `Port` | `5672` | AMQP port |
-| `Username` | `guest` | RMQ user |
-| `Password` | `guest` | RMQ password |
+| `Username` / `Password` | `guest` / `guest` | Credentials |
 | `VirtualHost` | `/` | RMQ vhost |
 | `QueueName` | — | Queue to consume |
-| `PrefetchCount` | `1` | Messages in-flight per consumer |
-| `RetryIntervalSeconds` | `5` | Delay between connection retries |
-| `MaxRetryAttempts` | `5` | Max startup connection attempts |
+| `PrefetchCount` | `1` | In-flight messages per consumer |
+| `RetryIntervalSeconds` | `5` | Delay between startup retries |
+| `MaxRetryAttempts` | `5` | Max connection attempts before fatal exit |
 
 ### `Database`
 | Key | Description |
 |---|---|
-| `Host` | PostgreSQL host |
-| `Port` | PostgreSQL port (default 5432) |
-| `Username` | Superuser or DB owner |
-| `Password` | Credential |
-| `AdminDatabase` | DB used to issue `CREATE DATABASE` (typically `postgres`) |
-| `SqlDumpPath` | Relative path to the SQL template |
+| `Host` / `Port` | PostgreSQL server |
+| `Username` / `Password` | Superuser (for admin operations) |
+| `AdminDatabase` | Used for CREATE/DROP ROLE (typically `postgres`) |
+| `SharedDatabase` | DB where all tenant schemas are provisioned |
+| `DefaultRolePassword` | Temporary password for new tenant roles — rotate via secrets manager |
+| `MigrationsPath` | Relative path to the folder containing `.sql` migration scripts |
+| `AppDomain` | Passed to the license activation API |
+| `LicenseApiUrl` | Full URL of the external license endpoint |
 
 ### `Smtp`
 | Key | Description |
 |---|---|
-| `Host` | SMTP server hostname |
-| `Port` | `587` for STARTTLS, `465` for SSL |
+| `Host` / `Port` | SMTP server (`587` = STARTTLS, `465` = SSL) |
 | `Username` / `Password` | SMTP credentials |
 | `FromEmail` / `FromName` | Sender identity |
 | `EnableSsl` | `true` → STARTTLS |
 
+### `AppConnection`
+| Key | Description |
+|---|---|
+| `AxpertWebScriptsPath` | Primary path for AppSettings.ini and axapps.xml |
+| `ARMWebScriptsPath` | Secondary destination for config files |
+| `ARMAPIPath` | API service config destination |
+| `BackupFolderName` | Sub-folder name for timestamped backups |
+| `AppLoginUrl` | Base URL prepended with axiacid in success email |
+| `SupportUrl` | Support link included in failure email |
+
 ### `Logging`
 | Key | Description |
 |---|---|
-| `EnableDebug` | `true` → write Debug-level entries |
-| `LogDirectory` | Folder for log files |
-| `LogFilePrefix` | File name prefix (e.g. `rmq-consumer`) |
+| `EnableDebug` | `true` → emit Debug-level entries (disable in prod) |
+| `LogDirectory` | Output folder (`Logs/`) |
+| `LogFilePrefix` | Log filename prefix |
 | `RollingInterval` | `Day` / `Hour` / `Month` |
-| `RetainedFileCount` | How many rotated files to keep |
-| `FileSizeLimitMB` | Max size before roll-on-size kicks in |
+| `RetainedFileCount` | Rotated file retention count |
+| `FileSizeLimitMB` | Max file size before roll-on-size |
 
 ---
 
-## SQL Dump Template (`SqlDumps/schema_dump.sql`)
-
-- Use `{{SCHEMA_NAME}}` anywhere you need the tenant identifier.
-- The service replaces it with the sanitised `axiaAcId` at runtime.
-- The entire file runs inside a **single transaction** — it either fully applies or fully rolls back.
-- To evolve the schema: edit the file, or add a migration runner later.
-
----
-
-## How to Add a New Handler
+## Adding a New Handler
 
 1. Create `Handlers/MyNewHandler.cs` implementing `IQueueHandler`.
 2. Set `ApiName => "mynewapi"`.
-3. Inject whatever services you need via constructor.
+3. Inject whatever services you need in the constructor.
 4. Register in `Program.cs`:
    ```csharp
    services.AddTransient<IQueueHandler, MyNewHandler>();
    ```
-That's it. The dispatcher picks it up automatically.
+
+Zero changes to infrastructure. `MessageProcessorService` dispatches by `ApiName` automatically.
 
 ---
 
 ## Running Locally (Development)
 
 ```bash
-# 1. Restore packages
 dotnet restore
-
-# 2. Run
 dotnet run
-
-# Console shows live logs; Logs/ folder is also written.
+# Live logs in console; Logs/ folder also written
 ```
 
 ## Install as Windows Service (Production)
 
 ```powershell
-# 1. Publish self-contained
+# 1. Publish
 dotnet publish -c Release -r win-x64 --self-contained true -o C:\Services\RmqConsumer
 
-# 2. Create Windows Service
-sc.exe create "RmqConsumerService" `
-    binPath="C:\Services\RmqConsumer\RmqConsumerService.exe" `
-    start=auto
+# 2. Create service
+sc.exe create "RmqConsumerService" binPath="C:\Services\RmqConsumer\RmqConsumerService.exe" start=auto
 
-# 3. Start
-sc.exe start "RmqConsumerService"
-
-# 4. Stop / Remove
+# 3. Manage
+sc.exe start  "RmqConsumerService"
 sc.exe stop   "RmqConsumerService"
 sc.exe delete "RmqConsumerService"
 ```
 
-> `UseWindowsService()` in `Program.cs` means the same binary runs cleanly both in a terminal and as a service — no code changes needed.
+`UseWindowsService()` in `Program.cs` means the same binary runs cleanly as a service or in a terminal — no changes needed between environments.
 
 ---
 
@@ -264,10 +341,11 @@ sc.exe delete "RmqConsumerService"
 
 | Area | How to extend |
 |---|---|
-| **Logging sinks** | Add `.WriteTo.Graylog(...)` or `.WriteTo.Wazuh(...)` to `LoggerConfiguration` in `Program.cs` |
-| **New queue handler** | Implement `IQueueHandler` + 1-line DI registration |
-| **Multiple queues** | Run multiple `RabbitMqConsumerService` instances with different `IOptions<RabbitMqSettings>` named options |
-| **Secrets** | Replace plaintext passwords with `dotnet user-secrets`, Azure Key Vault, or HashiCorp Vault |
-| **Schema migrations** | Replace the static SQL dump with FluentMigrator or DbUp |
-| **Linux / Docker** | Remove `UseWindowsService()` or guard it with `RuntimeInformation.IsOSPlatform(OSPlatform.Windows)` |
-| **Health checks** | Add `services.AddHealthChecks()` with RMQ + Postgres probes |
+| **Logging sinks** | Add `.WriteTo.Graylog(...)` or `.WriteTo.Seq(...)` in `Program.cs` — Serilog sink, one line |
+| **Secrets management** | Replace plaintext passwords with Azure Key Vault / HashiCorp Vault via `AddAzureKeyVault()` |
+| **Multiple queues** | Register additional `IRabbitMqConsumer` instances with named `IOptions<RabbitMqSettings>` |
+| **Schema drift detection** | Query `__schema_migrations` and compare checksums against files on disk at startup |
+| **Health checks** | `services.AddHealthChecks().AddNpgsql(...).AddRabbitMQ(...)` |
+| **Linux / Docker** | Guard `UseWindowsService()` with `OperatingSystem.IsWindows()` |
+| **Migration rollback** | Add `down_*.sql` scripts and a `RollbackSchemaAsync` method on `ITenantProvisioningService` |
+| **Observability** | Add OpenTelemetry tracing — Npgsql and HttpClient have native OTEL instrumentation |

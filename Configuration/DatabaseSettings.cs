@@ -8,8 +8,10 @@ public sealed class DatabaseSettings
     public string Password { get; init; } = string.Empty;
     public string AdminDatabase { get; init; } = "postgres";
     public string SqlDumpPath { get; init; } = "SqlDumps/axiadmin_dump.sql";
-    public string TemplateDatabaseName { get; init; } = "axidb";
-    public string TemplateSchemaName { get; init; } = "axiadmin";
+    //public string TemplateDatabaseName { get; init; } = "axidb";
+    //public string TemplateSchemaName { get; init; } = "axiadmin";
+    public string SharedDatabase { get; init; } = "axidb";
+    public string MigrationsPath { get; init; } = "Migrations";
     public string AxiAdminName { get; init; } = "axiadmin";
     public string DefaultRolePassword { get; init; } = "log";
     public string LicenseApiUrl { get; init; } = string.Empty;

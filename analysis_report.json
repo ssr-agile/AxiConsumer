@@ -1,0 +1,851 @@
+{
+  "object_counts": {
+    "tables": 319,
+    "sequences": 26,
+    "views": 19,
+    "functions": 112,
+    "triggers": 30,
+    "indexes": 7,
+    "constraints": 159,
+    "copy_blocks": 319,
+    "insert_statements": 13,
+    "sequence_setvals": 26
+  },
+  "seed_included_tables": [
+    [
+      "ax_htmlplugins",
+      7
+    ],
+    [
+      "ax_layoutdesign",
+      60
+    ],
+    [
+      "ax_page_templates",
+      9
+    ],
+    [
+      "axcardtypemaster",
+      9
+    ],
+    [
+      "axctx1",
+      48
+    ],
+    [
+      "axdirectsql",
+      46
+    ],
+    [
+      "axentityrelations",
+      13
+    ],
+    [
+      "axglovar",
+      1
+    ],
+    [
+      "axi_command_prompts",
+      22
+    ],
+    [
+      "axi_commands",
+      6
+    ],
+    [
+      "aximpdef",
+      1
+    ],
+    [
+      "axmmetadatamaster",
+      3
+    ],
+    [
+      "axp_cards",
+      6
+    ],
+    [
+      "axp_vp",
+      8
+    ],
+    [
+      "axpagedetail",
+      86
+    ],
+    [
+      "axpages",
+      10
+    ],
+    [
+      "axpdc",
+      232
+    ],
+    [
+      "axpdef_axpertprops",
+      1
+    ],
+    [
+      "axpfgdtl",
+      9
+    ],
+    [
+      "axpfillgrid",
+      1
+    ],
+    [
+      "axpflds",
+      2697
+    ],
+    [
+      "axpgenmapdtl",
+      308
+    ],
+    [
+      "axpgenmaps",
+      25
+    ],
+    [
+      "axpinstance",
+      2
+    ],
+    [
+      "axpkeywords",
+      334
+    ],
+    [
+      "axprops",
+      2
+    ],
+    [
+      "axpstructconfig",
+      6
+    ],
+    [
+      "axpstructconfigprops",
+      58
+    ],
+    [
+      "axpstructconfigproval",
+      151
+    ],
+    [
+      "axptstructs",
+      117
+    ],
+    [
+      "axrelations",
+      1822
+    ],
+    [
+      "axtoolbar",
+      20
+    ],
+    [
+      "axvarcore",
+      8
+    ],
+    [
+      "connectinfo",
+      120
+    ],
+    [
+      "customtypes",
+      36
+    ],
+    [
+      "dual",
+      1
+    ],
+    [
+      "executeapidef",
+      2
+    ],
+    [
+      "fast_print_paper_size",
+      14
+    ],
+    [
+      "iviewbuttons",
+      1137
+    ],
+    [
+      "iviewcols",
+      1303
+    ],
+    [
+      "iviewcomps",
+      180
+    ],
+    [
+      "iviewhyplink",
+      145
+    ],
+    [
+      "iviewhypparval",
+      135
+    ],
+    [
+      "iviewmain",
+      167
+    ],
+    [
+      "iviewparams",
+      162
+    ],
+    [
+      "iviews",
+      79
+    ],
+    [
+      "iviewsql",
+      167
+    ],
+    [
+      "lviews",
+      49
+    ],
+    [
+      "sequence",
+      8
+    ],
+    [
+      "testf1",
+      1
+    ],
+    [
+      "tstructs",
+      70
+    ]
+  ],
+  "seed_excluded_tables": [
+    [
+      "ax_layoutdesign_saved",
+      60
+    ],
+    [
+      "ax_page_saved",
+      1
+    ],
+    [
+      "ax_user_settings",
+      7
+    ],
+    [
+      "axpdef_axcalendar_event",
+      4
+    ],
+    [
+      "axpdef_usergroups",
+      1
+    ],
+    [
+      "axpertlog",
+      1
+    ],
+    [
+      "axprintdetails",
+      1
+    ],
+    [
+      "axprintexceptiondetails",
+      1
+    ],
+    [
+      "axrequest",
+      3
+    ],
+    [
+      "axresponse",
+      3
+    ],
+    [
+      "axusergrouping",
+      1
+    ],
+    [
+      "axusergroups",
+      2
+    ],
+    [
+      "axuserlevelgroups",
+      1
+    ],
+    [
+      "axusers",
+      1
+    ]
+  ],
+  "dynamic_sql_functions_review_required": [
+    "axigolden.axi_firesql",
+    "axigolden.axi_firesql_v2",
+    "axigolden.axp_tr_search_appsearch",
+    "axigolden.execute_sql_list",
+    "axigolden.fn_axi_get_fieldvalues_with_keysuffix_list",
+    "axigolden.fn_axi_getkeyvalueswithfieldnameslist",
+    "axigolden.fn_axi_metadata",
+    "axigolden.fn_axi_struct_metadata",
+    "axigolden.fn_axpanalytics_edittxn",
+    "axigolden.fn_axpanalytics_filterdata",
+    "axigolden.fn_axpanalytics_metadata",
+    "axigolden.fn_axpanalytics_pegstatus",
+    "axigolden.fn_dac_masterdata",
+    "axigolden.fn_get_query_cols",
+    "axigolden.fn_iconfiguration",
+    "axigolden.fn_peg_assigntoactor",
+    "axigolden.fn_peg_assigntorole",
+    "axigolden.fn_pegv2_editabletask",
+    "axigolden.fn_pegv2_tasklists",
+    "axigolden.fn_permissions_create_grpcol",
+    "axigolden.fn_permissions_getadscnd",
+    "axigolden.fn_permissions_getcnd",
+    "axigolden.fn_permissions_getdcrecid",
+    "axigolden.fn_permissions_getpermission",
+    "axigolden.fn_permissions_grpmaster",
+    "axigolden.fn_tconfiguration",
+    "axigolden.fn_tstruct_getdcrecid",
+    "axigolden.fn_upsert_config_by_condition",
+    "axigolden.get_ads_dropdown_data",
+    "axigolden.get_columns_name",
+    "axigolden.get_columns_names",
+    "axigolden.get_dynamic_field",
+    "axigolden.get_sql_columns",
+    "axigolden.getiview",
+    "axigolden.pr_axcnfg_tab_create",
+    "axigolden.pr_axcnfgiv_tab_create",
+    "axigolden.pr_bulk_page_delete",
+    "axigolden.pr_bulkexecute",
+    "axigolden.pr_executescript_new",
+    "axigolden.pr_executescript_thread_new",
+    "axigolden.pr_pegv2_processlist",
+    "axigolden.pr_pegv2_processprogress",
+    "axigolden.pr_pegv2_transactionstatus",
+    "axigolden.pr_pegv2_transcurstatus",
+    "axigolden.pr_source_trigger",
+    "axigolden.pro_emailformat",
+    "axigolden.tr_axpconfigs_iviews",
+    "axigolden.tr_axpconfigs_tstructs"
+  ],
+  "hardcoded_schema_remaining_in_generated_sql": {},
+  "seed_data_policy": "ALL_DATA_INCLUDED_FROM_GOLDEN_DUMP_NO_HEURISTIC_EXCLUSIONS",
+  "seed_tables_included_count": 319,
+  "seed_total_rows": 9991,
+  "seed_tables_with_rows": [
+    {
+      "table": "ax_htmlplugins",
+      "rows": 7
+    },
+    {
+      "table": "ax_layoutdesign",
+      "rows": 60
+    },
+    {
+      "table": "ax_layoutdesign_saved",
+      "rows": 60
+    },
+    {
+      "table": "ax_page_saved",
+      "rows": 1
+    },
+    {
+      "table": "ax_page_templates",
+      "rows": 9
+    },
+    {
+      "table": "ax_user_settings",
+      "rows": 7
+    },
+    {
+      "table": "axcardtypemaster",
+      "rows": 9
+    },
+    {
+      "table": "axctx1",
+      "rows": 48
+    },
+    {
+      "table": "axdirectsql",
+      "rows": 46
+    },
+    {
+      "table": "axentityrelations",
+      "rows": 13
+    },
+    {
+      "table": "axglovar",
+      "rows": 1
+    },
+    {
+      "table": "axi_command_prompts",
+      "rows": 22
+    },
+    {
+      "table": "axi_commands",
+      "rows": 6
+    },
+    {
+      "table": "aximpdef",
+      "rows": 1
+    },
+    {
+      "table": "axmmetadatamaster",
+      "rows": 3
+    },
+    {
+      "table": "axp_cards",
+      "rows": 6
+    },
+    {
+      "table": "axp_vp",
+      "rows": 8
+    },
+    {
+      "table": "axpagedetail",
+      "rows": 86
+    },
+    {
+      "table": "axpages",
+      "rows": 10
+    },
+    {
+      "table": "axpdc",
+      "rows": 232
+    },
+    {
+      "table": "axpdef_axcalendar_event",
+      "rows": 4
+    },
+    {
+      "table": "axpdef_axpertprops",
+      "rows": 1
+    },
+    {
+      "table": "axpdef_usergroups",
+      "rows": 1
+    },
+    {
+      "table": "axpertlog",
+      "rows": 1
+    },
+    {
+      "table": "axpfgdtl",
+      "rows": 9
+    },
+    {
+      "table": "axpfillgrid",
+      "rows": 1
+    },
+    {
+      "table": "axpflds",
+      "rows": 2697
+    },
+    {
+      "table": "axpgenmapdtl",
+      "rows": 308
+    },
+    {
+      "table": "axpgenmaps",
+      "rows": 25
+    },
+    {
+      "table": "axpinstance",
+      "rows": 2
+    },
+    {
+      "table": "axpkeywords",
+      "rows": 334
+    },
+    {
+      "table": "axprintdetails",
+      "rows": 1
+    },
+    {
+      "table": "axprintexceptiondetails",
+      "rows": 1
+    },
+    {
+      "table": "axprops",
+      "rows": 2
+    },
+    {
+      "table": "axpstructconfig",
+      "rows": 6
+    },
+    {
+      "table": "axpstructconfigprops",
+      "rows": 58
+    },
+    {
+      "table": "axpstructconfigproval",
+      "rows": 151
+    },
+    {
+      "table": "axptstructs",
+      "rows": 117
+    },
+    {
+      "table": "axrelations",
+      "rows": 1822
+    },
+    {
+      "table": "axrequest",
+      "rows": 3
+    },
+    {
+      "table": "axresponse",
+      "rows": 3
+    },
+    {
+      "table": "axtoolbar",
+      "rows": 20
+    },
+    {
+      "table": "axusergrouping",
+      "rows": 1
+    },
+    {
+      "table": "axusergroups",
+      "rows": 2
+    },
+    {
+      "table": "axuserlevelgroups",
+      "rows": 1
+    },
+    {
+      "table": "axusers",
+      "rows": 1
+    },
+    {
+      "table": "axvarcore",
+      "rows": 8
+    },
+    {
+      "table": "connectinfo",
+      "rows": 120
+    },
+    {
+      "table": "customtypes",
+      "rows": 36
+    },
+    {
+      "table": "dual",
+      "rows": 1
+    },
+    {
+      "table": "executeapidef",
+      "rows": 2
+    },
+    {
+      "table": "fast_print_paper_size",
+      "rows": 14
+    },
+    {
+      "table": "iviewbuttons",
+      "rows": 1137
+    },
+    {
+      "table": "iviewcols",
+      "rows": 1303
+    },
+    {
+      "table": "iviewcomps",
+      "rows": 180
+    },
+    {
+      "table": "iviewhyplink",
+      "rows": 145
+    },
+    {
+      "table": "iviewhypparval",
+      "rows": 135
+    },
+    {
+      "table": "iviewmain",
+      "rows": 167
+    },
+    {
+      "table": "iviewparams",
+      "rows": 162
+    },
+    {
+      "table": "iviews",
+      "rows": 79
+    },
+    {
+      "table": "iviewsql",
+      "rows": 167
+    },
+    {
+      "table": "lviews",
+      "rows": 49
+    },
+    {
+      "table": "sequence",
+      "rows": 8
+    },
+    {
+      "table": "testf1",
+      "rows": 1
+    },
+    {
+      "table": "tstructs",
+      "rows": 70
+    }
+  ],
+  "seed_tables_empty": [
+    "a__naeventimg",
+    "ad_prhistory",
+    "astcpattach",
+    "ax_homebuild_master",
+    "ax_homebuild_responsibility",
+    "ax_homebuild_saved",
+    "ax_homebuild_sd_responsibility",
+    "ax_hp_user_level_widget",
+    "ax_mobile_response",
+    "ax_mobile_user",
+    "ax_notify",
+    "ax_notify_users",
+    "ax_notify_workflow",
+    "ax_page_responsibility",
+    "ax_page_sd_responsibility",
+    "ax_pages",
+    "ax_userconfigdata",
+    "ax_widget",
+    "ax_widget_published",
+    "ax_widget_responsibility",
+    "ax_widget_saved",
+    "axaction",
+    "axactivemessages",
+    "axactivetaskdata",
+    "axactivetaskparams",
+    "axactivetasks",
+    "axactivetaskstatus",
+    "axamend",
+    "axapijobdetails",
+    "axappconfig",
+    "axattachworkflow",
+    "axaudit",
+    "axautoprints",
+    "axcalendar",
+    "axconstraints",
+    "axcustomviews",
+    "axdef_newfield",
+    "axdelegatedtasks",
+    "axdelegateusers",
+    "axdirectsql_metadata",
+    "axdsignconfig",
+    "axdsignmail",
+    "axdsigntrans",
+    "axerrorlog",
+    "axexportjobs",
+    "axexportjobsexception",
+    "axfastlink",
+    "axfinworkflow",
+    "axformnotify",
+    "axgraphcols",
+    "axgraphsetting",
+    "axgrouping",
+    "axgroupingmst",
+    "axgrouptstructs",
+    "axiconmenu",
+    "aximpappping",
+    "aximpdatauploadjobs",
+    "aximpfailedrecords",
+    "aximpjobs",
+    "aximportdef",
+    "aximportjobs",
+    "axinqueues",
+    "axinqueuesdata",
+    "axivuserconfig",
+    "axlangsource",
+    "axlanguage",
+    "axlanguage11x",
+    "axliccontrol",
+    "axlictrans",
+    "axlov",
+    "axmaudit",
+    "axmconnections",
+    "axmessage",
+    "axmessage_archive",
+    "axmtranscontrol",
+    "axmwslog",
+    "axmyviews",
+    "axnotificationdef",
+    "axonlineconvlog",
+    "axoutqueues",
+    "axoutqueuesdata",
+    "axoutqueuesmst",
+    "axp__appmgrms1",
+    "axp__appmgrss1",
+    "axp_appmgr",
+    "axp_appsearch_data",
+    "axp_appsearch_data_period",
+    "axp_appsearch_data_v2",
+    "axp_appsearchdtl",
+    "axp_customdatatype",
+    "axp_customtypes",
+    "axp_dbwdetails",
+    "axp_dependent",
+    "axp_files",
+    "axp_formload",
+    "axp_mailjobs",
+    "axp_params",
+    "axp_reportjobs",
+    "axp_sales_data",
+    "axp_smartviews_config",
+    "axp_struct_release_log",
+    "axp_tabledescriptor",
+    "axp_transcheck",
+    "axp_tstructprops",
+    "axp_versionchangedetails",
+    "axp_versionchanges",
+    "axp_versions",
+    "axp_webtrace",
+    "axpcal",
+    "axpclouddevsettings",
+    "axpdef_axcalendar_eventstatus",
+    "axpdef_axpanalytics_mdata",
+    "axpdef_axpertapi",
+    "axpdef_axvars",
+    "axpdef_axvars_dbvar",
+    "axpdef_impdata_templates",
+    "axpdef_jobs",
+    "axpdef_language",
+    "axpdef_news_events",
+    "axpdef_peg_actor",
+    "axpdef_peg_actorusergrp",
+    "axpdef_peg_grpfilter",
+    "axpdef_peg_processmaster",
+    "axpdef_peg_usergroups",
+    "axpdef_prcards",
+    "axpdef_publishapi",
+    "axpdef_ruleeng",
+    "axpdef_ruleeng_expr",
+    "axpdef_ruleeng_fctl",
+    "axpdef_ruleeng_masks",
+    "axpdef_ruleeng_msg",
+    "axpdef_ruleeng_valexpr",
+    "axpdef_script",
+    "axpdef_userroles",
+    "axpdflanguage",
+    "axpdraft",
+    "axpeg_sendmsg",
+    "axperiodnotify",
+    "axpermissions",
+    "axpertreports",
+    "axpexception",
+    "axpexchange",
+    "axpformlbls",
+    "axpkt",
+    "axpmdmaps",
+    "axppopdc",
+    "axprinting",
+    "axprintjobs",
+    "axprocess",
+    "axprocessdef",
+    "axprocessdef_delegation",
+    "axprocessdefv2",
+    "axprocessdefv2_escalation",
+    "axprocessdefv2_formctls",
+    "axprocessdefv2_reminder",
+    "axprocessdefv2_setval",
+    "axpselectionc",
+    "axpselectiond",
+    "axpselectionn",
+    "axptree",
+    "axptreeviewdetails",
+    "axptreeviews",
+    "axpublishreport",
+    "axpweblogs",
+    "axpws_config",
+    "axquicklinks",
+    "axrepostgenmaps",
+    "axrepostgenmapsrecdetails",
+    "axrolhistory",
+    "axrulesdef",
+    "axrulesdef_conmsg",
+    "axrulesdef_expr",
+    "axrulesdef_valexpr",
+    "axscheduler",
+    "axschema",
+    "axscriptdef",
+    "axscriptjobs",
+    "axsites",
+    "axsms",
+    "axsql_perf",
+    "axsrrattach",
+    "axstructprops",
+    "axtasks",
+    "axtempuserfields",
+    "axtranscontrol",
+    "axtsuserconfig",
+    "axuseraccess",
+    "axuseractivations",
+    "axusercharts",
+    "axuserdpermissions",
+    "axusergroupsdetail",
+    "axuserpermissions",
+    "axuserprofile",
+    "axuserprofileimage",
+    "axuserspwdpolicy",
+    "axusrhistory",
+    "axusrprofilepic",
+    "axworkflow",
+    "axworkflowmail",
+    "connections",
+    "dsignconfig",
+    "dsignconfigdtl",
+    "dwb_iviewscripts",
+    "dwb_publishprops",
+    "emaildef",
+    "emaildetails",
+    "emailexceptiondetails",
+    "fillgriddef",
+    "financialyear",
+    "financialyeardtl",
+    "formsize",
+    "groupbtns",
+    "htmlprint",
+    "htmlsections",
+    "iconfiguration",
+    "iconfigurationdtl",
+    "images",
+    "importdatacompletion",
+    "importdatadetails",
+    "importdataexceptions",
+    "inbound",
+    "iviewscripts",
+    "iviewsubtotals",
+    "msgs1",
+    "msgs2",
+    "outbound",
+    "pdfimage",
+    "pdfprops",
+    "popupsizes",
+    "printprms",
+    "printprops",
+    "prints",
+    "publishprops",
+    "recvpkts",
+    "reference",
+    "samplefm",
+    "sampll",
+    "searchcols",
+    "searchdef",
+    "sect2",
+    "sect4",
+    "sendmsg",
+    "sendpkts",
+    "structchanges",
+    "structlock",
+    "tconfiguration",
+    "templates",
+    "tstruct_mst_details",
+    "tstructscripts",
+    "usagedtl",
+    "usergroupings",
+    "usergroupmaster",
+    "usersequence",
+    "ut_timetaken"
+  ],
+  "sequence_setvals_included": 26
+}

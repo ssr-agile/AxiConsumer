@@ -57,7 +57,8 @@ public sealed class AxiAdminHandler : IQueueHandler
         try
         {
             //_logger.LogInformation("Step 1/2 – Provisioning database for AxiAcId={AxiAcId}", data.AxiAcId);
-            _logger.LogInformation("Step 1/3 – Cloning template '{Template}' → database '{Db}'", _settings.TemplateDatabaseName, data.AxiAcId);
+            //_logger.LogInformation("Step 1/3 – Cloning template '{Template}' → database '{Db}'", _settings.TemplateDatabaseName, data.AxiAcId);
+            _logger.LogInformation("Step 1/3 – Cloning schema '{schema}'", data.AxiAcId);
             //success = await _db.CreateDatabaseAndSchemaAsync(data.AxiAcId, data.Email, cancellationToken);
             success = await _db.ProvisionTenantAsync(data.AxiAcId, data.Email, cancellationToken);
 
@@ -65,14 +66,14 @@ public sealed class AxiAdminHandler : IQueueHandler
                 throw new InvalidOperationException("Database service returned false without throwing.");
 
             //_logger.LogInformation("Step 1/2 – Database provisioned successfully for AxiAcId={AxiAcId}", data.AxiAcId);
-            _logger.LogInformation("Step 1/3 – Cloned template successfully '{Template}' → database '{Db}'", _settings.TemplateDatabaseName, data.AxiAcId);
+            _logger.LogInformation("Step 1/3 – Cloned schema successfully '{schema}'", data.AxiAcId);
         }
         catch (Exception ex)
         {
             success = false;
             failureReason = ex.Message;
             //_logger.LogError(ex, "Step 1/2 – Database provisioning failed for AxiAcId={AxiAcId}", data.AxiAcId);
-            _logger.LogInformation("Step 1/3 – template Cloning failed for '{Template}' → database '{Db}'", _settings.TemplateDatabaseName, data.AxiAcId);
+            _logger.LogInformation("Step 1/3 – schema Cloning failed for '{schema}'", data.AxiAcId);
 
         }
 

@@ -27,21 +27,25 @@ public interface IDatabaseOrchestrator
     Task<bool> ProvisionTenantAsync(string axiaAcId, string email, CancellationToken ct);
 }
 
+public interface ITenantProvisionService
+{
+    Task ProvisionSchemaAsync(string schemaName, string userPassword, CancellationToken ct);
+    Task CleanupSchemaAsync(string schemaName, CancellationToken ct);
+    Task SeedUserAsync(string dbName, string email, CancellationToken ct);
+    Task UpdateUserKeysAsync(string dbName, string email, string authKey, string userKey, CancellationToken ct);
+}
+
 public interface IAdminDbService
 {
     Task<bool> DatabaseExistsAsync(string dbName, CancellationToken ct);
     Task EnsureRoleAsync(string roleName, string password, CancellationToken ct);
-    Task TerminateConnectionsAsync(string dbName, CancellationToken ct);
-    Task CloneDatabaseAsync(string dbName, string template, CancellationToken ct);
-    Task SetDatabaseOwnerAsync(string dbName, string owner, CancellationToken ct);
     Task CleanupAsync(string identifier, CancellationToken ct);  // rollback
 }
 
 public interface ITenantDbService
 {
-    Task ApplyPostCloneFixesAsync(string dbName, string templateSchema, CancellationToken ct);
-    Task SeedUserAsync(string dbName, string email, CancellationToken ct);
-    Task UpdateUserKeysAsync(string dbName, string email, string authKey, string userKey, CancellationToken ct);
+//    Task SeedUserAsync(string dbName, string email, CancellationToken ct);
+//    Task UpdateUserKeysAsync(string dbName, string email, string authKey, string userKey, CancellationToken ct);
 }
 
 public interface ILicenseService

@@ -25,18 +25,19 @@ public class ConfigurationFileService : IConfigurationFileService
         // 1. Load source files
         string iniPath = Path.Combine(_appConnSettings.AxpertWebScriptsPath, "AppSettings.ini");
         string xmlPath = Path.Combine(_appConnSettings.AxpertWebScriptsPath, "axapps.xml");
-        string templateConnection = _dbSettings.AxiAdminName;
+        string templateConn = _dbSettings.AxiAdminName;
+        string sharedDB = _dbSettings.SharedDatabase;
 
         // 2. Process AppSettings.ini (JSON Logic)
         var jsonContent = await File.ReadAllTextAsync(iniPath, ct);
         var root = JsonNode.Parse(jsonContent);
-        CloneJsonSection(root!, "appconnections", templateConnection, newAxiAcId);
-        CloneJsonSection(root!, "appsettings", templateConnection, newAxiAcId);
+        CloneJsonSection(root!, "appconnections", templateConn, newAxiAcId, sharedDB);
+        CloneJsonSection(root!, "appsettings", templateConn, newAxiAcId, sharedDB);
         string updatedJson = root!.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
 
         // 3. Process axapps.xml (XML Logic)
         var xmlDoc = XDocument.Load(xmlPath);
-        CloneXmlNode(xmlDoc, templateConnection, newAxiAcId);
+        CloneXmlNode(xmlDoc, templateConn, newAxiAcId, sharedDB);
         string updatedXml = xmlDoc.ToString();
 
         string[] configDestinationPaths = [_appConnSettings.AxpertWebScriptsPath, _appConnSettings.ARMWebScriptsPath];
@@ -52,36 +53,36 @@ public class ConfigurationFileService : IConfigurationFileService
         return true;
     }
 
-    private void CloneJsonSection(JsonNode root, string sectionName, string templateKey, string newKey)
+    private void CloneJsonSection(JsonNode root, string sectionName, string templateConnection, string newSchemaConnection, string dbName)
     {
         var section = root[sectionName]?.AsObject();
-        if (section != null && section.ContainsKey(templateKey))
+        if (section != null && section.ContainsKey(templateConnection))
         {
-            var newNode = JsonNode.Parse(section[templateKey]!.ToJsonString());
+            var newNode = JsonNode.Parse(section[templateConnection]!.ToJsonString());
             // Update dbuser specifically if needed (e.g., axiadmin\axidb -> newAcId\axidb)
             if (newNode!["dbuser"] != null)
-                newNode["dbuser"] = $"{newKey.ToLower()}\\{newKey.ToLower()}";
+                newNode["dbuser"] = $"{newSchemaConnection.ToLower()}\\{dbName.ToLower()}";
 
-            section[newKey] = newNode;
-            _logger.LogDebug("Cloned JSON section {Section}:{NewKey}", sectionName, newKey);
+            section[newSchemaConnection] = newNode;
+            _logger.LogDebug("Cloned JSON section {Section}:{NewKey}", sectionName, newSchemaConnection);
         }
     }
 
-    private void CloneXmlNode(XDocument doc, string templateName, string newName)
+    private void CloneXmlNode(XDocument doc, string templateConnection, string newSchemaConnection, string dbName)
     {
         var connections = doc.Element("connections");
-        var template = connections?.Element(templateName);
+        var template = connections?.Element(templateConnection);
         if (template != null)
         {
             XElement newNode = new XElement(template);
-            newNode.Name = newName;
+            newNode.Name = newSchemaConnection;
 
             // Update dbuser element
             var dbUser = newNode.Element("dbuser");
-            if (dbUser != null) dbUser.Value = $"{newName.ToLower()}\\{newName.ToLower()}";
+            if (dbUser != null) dbUser.Value = $"{newSchemaConnection.ToLower()}\\{dbName.ToLower()}";
 
             connections!.Add(newNode);
-            _logger.LogDebug("Cloned XML node: {NewName}", newName);
+            _logger.LogDebug("Cloned XML node: {NewName} on db {dbName}", newSchemaConnection, dbName );
         }
     }
 
