@@ -1,6 +1,6 @@
-using RmqConsumerService.Models;
+using AxiConsumer.Models;
 
-namespace RmqConsumerService.Handlers;
+namespace AxiConsumer.Handlers;
 
 /// <summary>
 /// Implement this interface for every new API/handler you want to support.

@@ -2,10 +2,10 @@
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
 using Microsoft.Extensions.Options;
-using RmqConsumerService.Configuration;
-using RmqConsumerService.Services.Interfaces;
+using AxiConsumer.Configuration;
+using AxiConsumer.Services.Interfaces;
 
-namespace RmqConsumerService.Services;
+namespace AxiConsumer.Services;
 
 public class ConfigurationFileService : IConfigurationFileService
 {
@@ -25,7 +25,7 @@ public class ConfigurationFileService : IConfigurationFileService
         // 1. Load source files
         string iniPath = Path.Combine(_appConnSettings.AxpertWebScriptsPath, "AppSettings.ini");
         string xmlPath = Path.Combine(_appConnSettings.AxpertWebScriptsPath, "axapps.xml");
-        string templateConn = _dbSettings.AxiAdminName;
+        string templateConn = _dbSettings.AxiControlSchemaName;
         string sharedDB = _dbSettings.SharedDatabase;
 
         // 2. Process AppSettings.ini (JSON Logic)
@@ -48,7 +48,7 @@ public class ConfigurationFileService : IConfigurationFileService
             await BackupAndSave(destDir, "axapps.xml", updatedXml, ct);
         }
 
-        await BackupAndSave(_appConnSettings.ARMAPIPath, "AppSettings.ini", updatedJson, ct);
+        await BackupAndSave(_appConnSettings.ARMPath, "AppSettings.ini", updatedJson, ct);
 
         return true;
     }
@@ -59,9 +59,19 @@ public class ConfigurationFileService : IConfigurationFileService
         if (section != null && section.ContainsKey(templateConnection))
         {
             var newNode = JsonNode.Parse(section[templateConnection]!.ToJsonString());
-            // Update dbuser specifically if needed (e.g., axiadmin\axidb -> newAcId\axidb)
-            if (newNode!["dbuser"] != null)
-                newNode["dbuser"] = $"{newSchemaConnection.ToLower()}\\{dbName.ToLower()}";
+
+            if(sectionName == "appconnections" && newNode!["dbuser"] != null)
+            {
+                if (newNode["driver"]?.GetValue<string>().ToLower() == "ado")
+                {
+                    newNode["dbuser"] = "";
+                    newNode["odbcdbuser"] = $"{newSchemaConnection.ToLower()}";
+                }
+                else
+                {
+                    newNode["dbuser"] = $"{newSchemaConnection.ToLower()}\\{dbName.ToLower()}";
+                }
+            }
 
             section[newSchemaConnection] = newNode;
             _logger.LogDebug("Cloned JSON section {Section}:{NewKey}", sectionName, newSchemaConnection);
@@ -79,10 +89,21 @@ public class ConfigurationFileService : IConfigurationFileService
 
             // Update dbuser element
             var dbUser = newNode.Element("dbuser");
-            if (dbUser != null) dbUser.Value = $"{newSchemaConnection.ToLower()}\\{dbName.ToLower()}";
+            if (dbUser != null)
+            {
+                if (newNode.Element("driver")?.Value == "ado")
+                {
+                    dbUser.Value = "";
+                    newNode.Add(new XElement("odbcdbuser", newSchemaConnection));
+                }
+                else
+                {
+                    dbUser.Value = $"{newSchemaConnection.ToLower()}\\{dbName.ToLower()}";
+                }
+            }
 
             connections!.Add(newNode);
-            _logger.LogDebug("Cloned XML node: {NewName} on db {dbName}", newSchemaConnection, dbName );
+            _logger.LogDebug("Cloned XML node: {NewName} on db {dbName}", newSchemaConnection, dbName);
         }
     }
 

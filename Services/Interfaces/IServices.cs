@@ -1,6 +1,6 @@
-using RmqConsumerService.Models;
+using AxiConsumer.Models;
 
-namespace RmqConsumerService.Services.Interfaces;
+namespace AxiConsumer.Services.Interfaces;
 
 public interface IRabbitMqConsumer
 {

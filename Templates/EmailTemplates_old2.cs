@@ -1,7 +1,7 @@
 //using System.Net;
 //using System.Text;
 
-//namespace RmqConsumerService.Templates;
+//namespace AxiConsumer.Templates;
 
 //public static class EmailTemplates
 //{

@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using RmqConsumerService.Handlers;
-using RmqConsumerService.Models;
-using RmqConsumerService.Services.Interfaces;
+using AxiConsumer.Handlers;
+using AxiConsumer.Models;
+using AxiConsumer.Services.Interfaces;
 
-namespace RmqConsumerService.Services;
+namespace AxiConsumer.Services;
 
 /// <summary>
 /// Resolves the correct <see cref="IQueueHandler"/> by ApiName and delegates to it.

@@ -1,4 +1,4 @@
-namespace RmqConsumerService.Configuration;
+namespace AxiConsumer.Configuration;
 
 public sealed class LogSettings
 {

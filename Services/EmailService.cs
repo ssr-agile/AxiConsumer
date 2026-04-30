@@ -3,11 +3,11 @@ using MailKit.Security;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
-using RmqConsumerService.Configuration;
-using RmqConsumerService.Services.Interfaces;
-using RmqConsumerService.Templates;
+using AxiConsumer.Configuration;
+using AxiConsumer.Services.Interfaces;
+using AxiConsumer.Templates;
 
-namespace RmqConsumerService.Services;
+namespace AxiConsumer.Services;
 
 public sealed class EmailService : IEmailService
 {

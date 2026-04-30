@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Npgsql;
-using RmqConsumerService;
-using RmqConsumerService.Configuration;
-using RmqConsumerService.Handlers;
-using RmqConsumerService.Services;
-using RmqConsumerService.Services.Interfaces;
+using AxiConsumer;
+using AxiConsumer.Configuration;
+using AxiConsumer.Handlers;
+using AxiConsumer.Services;
+using AxiConsumer.Services.Interfaces;
 using Serilog;
 using Serilog.Events;
 using System.Net.Http;

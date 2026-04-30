@@ -1,14 +1,14 @@
 //using Microsoft.Extensions.Logging;
 //using Microsoft.Extensions.Options;
 //using Npgsql;
-//using RmqConsumerService.Configuration;
-//using RmqConsumerService.Models;
-//using RmqConsumerService.Services.Interfaces;
+//using AxiConsumer.Configuration;
+//using AxiConsumer.Models;
+//using AxiConsumer.Services.Interfaces;
 //using System.Net.Http;
 //using System.Net.Http.Json;
 //using Polly;
 
-//namespace RmqConsumerService.Services;
+//namespace AxiConsumer.Services;
 
 //public sealed class DatabaseService : IDatabaseService
 //{

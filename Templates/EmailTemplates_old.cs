@@ -1,6 +1,6 @@
 //using System.Net;
 
-//namespace RmqConsumerService.Templates;
+//namespace AxiConsumer.Templates;
 
 ///// <summary>
 ///// Self-contained HTML email templates.

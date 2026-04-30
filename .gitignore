@@ -3,5 +3,6 @@ obj/
 Logs/
 *.user
 .vs/
+*.yaml
 appsettings.*.json
 axiglobalconfig.json

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace RmqConsumerService.Models;
+namespace AxiConsumer.Models;
 
 /// <summary>
 /// Top-level envelope received from RabbitMQ.

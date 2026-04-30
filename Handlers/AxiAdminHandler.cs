@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using RmqConsumerService.Configuration;
-using RmqConsumerService.Models;
-using RmqConsumerService.Services.Interfaces;
+using AxiConsumer.Configuration;
+using AxiConsumer.Models;
+using AxiConsumer.Services.Interfaces;
 using System.Runtime;
 using System.Text.Json;
 
-namespace RmqConsumerService.Handlers;
+namespace AxiConsumer.Handlers;
 
 /// <summary>
 /// Handles messages where ApiName == "axiadmin".

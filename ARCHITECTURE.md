@@ -10,13 +10,13 @@ It connects to **RabbitMQ**, consumes messages one at a time, dispatches them to
 ## Folder Structure
 
 ```
-RmqConsumerService/
+AxiConsumer/
 │
 ├── axiglobalconfig.json            ← All configuration (RMQ, DB, SMTP, Logging, AppConnection)
 │
 ├── Program.cs                      ← Host bootstrap, DI registration, Serilog + DataSource setup
 ├── Worker.cs                       ← BackgroundService entry-point
-├── RmqConsumerService.csproj
+├── AxiConsumer.csproj
 │
 ├── Configuration/                  ← Strongly-typed settings (bound from axiglobalconfig.json)
 │   ├── RabbitMqSettings.cs
@@ -325,12 +325,12 @@ dotnet run
 dotnet publish -c Release -r win-x64 --self-contained true -o C:\Services\RmqConsumer
 
 # 2. Create service
-sc.exe create "RmqConsumerService" binPath="C:\Services\RmqConsumer\RmqConsumerService.exe" start=auto
+sc.exe create "AxiConsumer" binPath="C:\Services\RmqConsumer\AxiConsumer.exe" start=auto
 
 # 3. Manage
-sc.exe start  "RmqConsumerService"
-sc.exe stop   "RmqConsumerService"
-sc.exe delete "RmqConsumerService"
+sc.exe start  "AxiConsumer"
+sc.exe stop   "AxiConsumer"
+sc.exe delete "AxiConsumer"
 ```
 
 `UseWindowsService()` in `Program.cs` means the same binary runs cleanly as a service or in a terminal — no changes needed between environments.

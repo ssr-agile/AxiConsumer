@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using RmqConsumerService.Services.Interfaces;
+using AxiConsumer.Services.Interfaces;
 
-namespace RmqConsumerService;
+namespace AxiConsumer;
 
 /// <summary>
 /// .NET hosted background service entry-point.

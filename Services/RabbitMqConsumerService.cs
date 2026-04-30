@@ -5,11 +5,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using RmqConsumerService.Configuration;
-using RmqConsumerService.Models;
-using RmqConsumerService.Services.Interfaces;
+using AxiConsumer.Configuration;
+using AxiConsumer.Models;
+using AxiConsumer.Services.Interfaces;
 
-namespace RmqConsumerService.Services;
+namespace AxiConsumer.Services;
 
 /// <summary>
 /// Maintains a persistent RabbitMQ connection and consumes messages one at a time (prefetch=1).

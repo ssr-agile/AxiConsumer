@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace RmqConsumerService.Models;
+namespace AxiConsumer.Models;
 
 /// <summary>
 /// Wrapper that matches the outer "axiadmin" key in queuedata JSON.

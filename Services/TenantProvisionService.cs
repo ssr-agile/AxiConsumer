@@ -2,13 +2,13 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using RmqConsumerService.Configuration;
-using RmqConsumerService.Services.Interfaces;
+using AxiConsumer.Configuration;
+using AxiConsumer.Services.Interfaces;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace RmqConsumerService.Services;
+namespace AxiConsumer.Services;
 
 public sealed class TenantProvisionService : ITenantProvisionService
 {

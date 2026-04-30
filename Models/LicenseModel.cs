@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RmqConsumerService.Models
+namespace AxiConsumer.Models
 {
     public class LicenseRequest
     {
