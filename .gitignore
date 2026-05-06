@@ -6,3 +6,4 @@ Logs/
 *.yaml
 appsettings.*.json
 axiglobalconfig.json
+Properties/

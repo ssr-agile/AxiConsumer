@@ -64,8 +64,10 @@ public class ConfigurationFileService : IConfigurationFileService
             {
                 if (newNode["driver"]?.GetValue<string>().ToLower() == "ado")
                 {
-                    newNode["dbuser"] = "";
+                    newNode["dbuser"] = $"{newSchemaConnection.ToLower()}";
+                    //newNode["odbcdbuser"] = $"{templateConnection.ToLower()}";
                     newNode["odbcdbuser"] = $"{newSchemaConnection.ToLower()}";
+                    newNode["pwd"] = "000301590161015232163450607080013"; // need to be dynamic
                 }
                 else
                 {
@@ -89,12 +91,15 @@ public class ConfigurationFileService : IConfigurationFileService
 
             // Update dbuser element
             var dbUser = newNode.Element("dbuser");
-            if (dbUser != null)
+            var password = newNode.Element("pwd");
+            if (dbUser != null && password != null)
             {
                 if (newNode.Element("driver")?.Value == "ado")
                 {
-                    dbUser.Value = "";
-                    newNode.Add(new XElement("odbcdbuser", newSchemaConnection));
+                    dbUser.Value = $"{newSchemaConnection.ToLower()}";
+                    password.Value = "000301590161015232163450607080013";
+                    //newNode.Add(new XElement("odbcdbuser", templateConnection.ToLower()));
+                    newNode.Add(new XElement("odbcdbuser", newSchemaConnection.ToLower()));
                 }
                 else
                 {
