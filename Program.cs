@@ -98,10 +98,11 @@ try
             services.AddTransient<ITenantProvisionService, TenantProvisionService>();
             services.AddTransient<ILicenseService, LicenseService>();
             services.AddTransient<IDatabaseOrchestrator, DatabaseOrchestrator>();
+            services.AddTransient<IConfigurationFileService, ConfigurationFileService>();
+            services.AddTransient<IIISService, IISService>();
 
             // ── Handlers ──────────────────────────────────────────────────────
             services.AddTransient<IQueueHandler, AxiAdminHandler>();
-            services.AddTransient<IConfigurationFileService, ConfigurationFileService>();
 
             // ── Hosted worker ─────────────────────────────────────────────────
             services.AddHostedService<Worker>();

@@ -53,13 +53,23 @@ public interface ILicenseService
     Task<LicenseResponse> ActivateAsync(string dbName, string email, CancellationToken ct);
 }
 
-public interface IEmailService
+public interface IIISService
 {
-    Task SendSuccessAsync(string toEmail, string orgName, string axiaAcId, CancellationToken cancellationToken);
-    Task SendFailureAsync(string toEmail, string orgName, string axiaAcId, string reason, CancellationToken cancellationToken);
+    /// <summary>
+    /// Recycles all configured application pools in parallel.
+    /// Logs per-pool success/failure without throwing — a pool failure
+    /// must not block email or ack.
+    /// </summary>
+    Task IISRecyclePoolsAsync(CancellationToken ct);
 }
 
 public interface IConfigurationFileService
 {
     Task<bool> UpdateConfigsAsync(string newAxiAcId, CancellationToken ct);
+}
+
+public interface IEmailService
+{
+    Task SendSuccessAsync(string toEmail, string orgName, string axiaAcId, CancellationToken cancellationToken);
+    Task SendFailureAsync(string toEmail, string orgName, string axiaAcId, string reason, CancellationToken cancellationToken);
 }

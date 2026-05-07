@@ -92,6 +92,7 @@ public class ConfigurationFileService : IConfigurationFileService
             // Update dbuser element
             var dbUser = newNode.Element("dbuser");
             var password = newNode.Element("pwd");
+            var odbcdbuser = newNode.Element("odbcdbuser");
             if (dbUser != null && password != null)
             {
                 if (newNode.Element("driver")?.Value == "ado")
@@ -99,7 +100,7 @@ public class ConfigurationFileService : IConfigurationFileService
                     dbUser.Value = $"{newSchemaConnection.ToLower()}";
                     password.Value = "000301590161015232163450607080013";
                     //newNode.Add(new XElement("odbcdbuser", templateConnection.ToLower()));
-                    newNode.Add(new XElement("odbcdbuser", newSchemaConnection.ToLower()));
+                    odbcdbuser.Value = $"{newSchemaConnection.ToLower()}";
                 }
                 else
                 {
