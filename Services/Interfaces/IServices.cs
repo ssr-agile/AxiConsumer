@@ -24,14 +24,14 @@ public interface IMessageProcessor
 
 public interface IDatabaseOrchestrator
 {
-    Task<bool> ProvisionTenantAsync(string axiaAcId, string email, CancellationToken ct);
+    Task<bool> ProvisionTenantAsync(string axiaAcId, string email, string userName, CancellationToken ct);
 }
 
 public interface ITenantProvisionService
 {
     Task ProvisionSchemaAsync(string schemaName, string userPassword, CancellationToken ct);
     Task CleanupSchemaAsync(string schemaName, CancellationToken ct);
-    Task SeedUserAsync(string dbName, string email, CancellationToken ct);
+    Task SeedUserAsync(string dbName, string email, string userName, CancellationToken ct);
     Task UpdateUserKeysAsync(string dbName, string email, string authKey, string userKey, CancellationToken ct);
 }
 
@@ -70,6 +70,6 @@ public interface IConfigurationFileService
 
 public interface IEmailService
 {
-    Task SendSuccessAsync(string toEmail, string orgName, string axiaAcId, CancellationToken cancellationToken);
-    Task SendFailureAsync(string toEmail, string orgName, string axiaAcId, string reason, CancellationToken cancellationToken);
+    Task SendSuccessAsync(string toEmail, string orgName, string axiaAcId, string userName, CancellationToken cancellationToken);
+    Task SendFailureAsync(string toEmail, string orgName, string axiaAcId, string userName, string reason, CancellationToken cancellationToken);
 }

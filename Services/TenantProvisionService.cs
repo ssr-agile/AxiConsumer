@@ -128,15 +128,17 @@ public sealed class TenantProvisionService : ITenantProvisionService
         }
     }
 
-    public async Task SeedUserAsync(string dbName, string email, CancellationToken ct)
+    public async Task SeedUserAsync(string dbName, string email, string userName, CancellationToken ct)
     {
         await using var conn = await _sharedDs.OpenConnectionAsync(ct);
 
-        var nickname = email.Contains('@') ? email[..email.IndexOf('@')] : email;
+        var name = !string.IsNullOrEmpty(userName) ? 
+                            userName : email.Contains('@') 
+                            ? email[..email.IndexOf('@')] : email;
         await using var cmd = new NpgsqlCommand($"SELECT \"{dbName}\".setup_new_user(@u, @e, @n)", conn);
-        cmd.Parameters.AddWithValue("u", email);
+        cmd.Parameters.AddWithValue("u", name);
         cmd.Parameters.AddWithValue("e", email);
-        cmd.Parameters.AddWithValue("n", nickname);
+        cmd.Parameters.AddWithValue("n", name);
         await cmd.ExecuteNonQueryAsync(ct);
         _logger.LogInformation("Seed user created in '{Db}'.", dbName);
     }

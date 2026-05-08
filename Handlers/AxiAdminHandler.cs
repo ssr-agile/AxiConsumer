@@ -51,8 +51,8 @@ public sealed class AxiAdminHandler : IQueueHandler
         }
 
         _logger.LogInformation(
-            "AxiAdmin payload parsed – OrgName={OrgName} AxiAcId={AxiAcId} Email={Email}",
-            data.OrgName, data.AxiAcId, data.Email);
+            "AxiAdmin payload parsed – OrgName={OrgName} AxiAcId={AxiAcId} Email={Email} Username={Username}",
+            data.OrgName, data.AxiAcId, data.Email, data.Username);
 
         bool success;
         string? failureReason = null;
@@ -63,7 +63,7 @@ public sealed class AxiAdminHandler : IQueueHandler
             //_logger.LogInformation("Step 1/3 – Cloning template '{Template}' → database '{Db}'", _settings.TemplateDatabaseName, data.AxiAcId);
             _logger.LogInformation("Step 1/4 – Cloning schema '{schema}'", data.AxiAcId);
             //success = await _db.CreateDatabaseAndSchemaAsync(data.AxiAcId, data.Email, cancellationToken);
-            success = await _db.ProvisionTenantAsync(data.AxiAcId, data.Email, cancellationToken);
+            success = await _db.ProvisionTenantAsync(data.AxiAcId, data.Email, data.Username, cancellationToken);
 
             if (!success)
                 throw new InvalidOperationException("Tenent provision returned false without throwing.");
@@ -111,9 +111,9 @@ public sealed class AxiAdminHandler : IQueueHandler
             _logger.LogInformation("Step 4/4 – Sending {Status} email to {Email}", success ? "success" : "failure", data.Email);
 
             if (success)
-                await _email.SendSuccessAsync(data.Email, data.OrgName, data.AxiAcId, cancellationToken);
+                await _email.SendSuccessAsync(data.Email, data.OrgName, data.AxiAcId, data.Username, cancellationToken);
             else
-                await _email.SendFailureAsync(data.Email, data.OrgName, data.AxiAcId, failureReason!, cancellationToken);
+                await _email.SendFailureAsync(data.Email, data.OrgName, data.AxiAcId, data.Username, failureReason!, cancellationToken);
 
             _logger.LogInformation("Step 4/4 – Email sent to {Email}", data.Email);
         }

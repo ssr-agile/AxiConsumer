@@ -100,7 +100,15 @@ public class ConfigurationFileService : IConfigurationFileService
                     dbUser.Value = $"{newSchemaConnection.ToLower()}";
                     password.Value = "000301590161015232163450607080013";
                     //newNode.Add(new XElement("odbcdbuser", templateConnection.ToLower()));
-                    odbcdbuser.Value = $"{newSchemaConnection.ToLower()}";
+
+                    if (odbcdbuser != null)
+                    {
+                        odbcdbuser.Value = newSchemaConnection.ToLower();
+                    }
+                    else
+                    {
+                        newNode.Add(new XElement("odbcdbuser", newSchemaConnection.ToLower()));
+                    }
                 }
                 else
                 {

@@ -29,7 +29,7 @@ public sealed class DatabaseOrchestrator : IDatabaseOrchestrator
         //_provisioning = provision;
     }
 
-    public async Task<bool> ProvisionTenantAsync(string axiaAcId, string email, CancellationToken ct)
+    public async Task<bool> ProvisionTenantAsync(string axiaAcId, string email, string userName, CancellationToken ct)
     {
         var id = Sanitise(axiaAcId);
 
@@ -48,7 +48,7 @@ public sealed class DatabaseOrchestrator : IDatabaseOrchestrator
             await _tenant.ProvisionSchemaAsync(id, _settings.DefaultRolePassword, ct);
 
             // 3. Seed initial user into the new schema
-            await _tenant.SeedUserAsync(id, email, ct);
+            await _tenant.SeedUserAsync(id, email, userName, ct);
 
             // 4. External license activation
             var lic = await _license.ActivateAsync(id, email, ct);

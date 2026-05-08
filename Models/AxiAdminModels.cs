@@ -13,6 +13,9 @@ public sealed class AxiAdminPayload
 
 public sealed class AxiAdminData
 {
+    [JsonPropertyName("username")]
+    public string Username { get; init; } = string.Empty;
+
     [JsonPropertyName("emailid")]
     public string Email { get; init; } = string.Empty;
 

@@ -5,11 +5,11 @@ namespace AxiConsumer.Templates;
 
 public static class EmailTemplates
 {
-    public static string Success(string email, string orgName, string axiaAcId, string loginUrl)
+    public static string Success(string email, string orgName, string axiaAcId, string userName, string loginUrl)
         => Wrap("#4f46e5", "#4338ca", "Welcome to AXI 🚀",
             $"""
             <p style="font-size:18px;font-weight:600;margin-bottom:10px;color:#ffffff;">
-                Welcome to AXI, {Enc(orgName)}
+                Welcome to AXI, {Enc(userName)}
             </p>
 
             <p style="color:#d1d5db;font-size:14px;line-height:1.6;">
@@ -25,17 +25,18 @@ public static class EmailTemplates
 
             {CompactInfoBox(new[]
             {
+                ("Username", userName),
                 ("Email", email),
                 ("Account ID", axiaAcId),
                 ("Status", "Active"),
             })}
             """);
 
-    public static string Failure(string email, string orgName, string refId, string reason, string retryUrl)
+    public static string Failure(string email, string orgName, string refId, string userName, string reason, string retryUrl)
         => Wrap("#ef4444", "#b91c1c", "Something went wrong ⚠️",
             $"""
             <p style="font-size:18px;font-weight:600;margin-bottom:10px;color:#ffffff;">
-                Hi {Enc(orgName)},
+                Hi {Enc(userName)},
             </p>
 
             <p style="color:#d1d5db;font-size:14px;line-height:1.6;">

@@ -22,18 +22,18 @@ public sealed class EmailService : IEmailService
         _logger   = logger;
     }
 
-    public Task SendSuccessAsync(string toEmail, string orgName, string axiaAcId, CancellationToken ct) =>
+    public Task SendSuccessAsync(string toEmail, string orgName, string axiaAcId, string userName, CancellationToken ct) =>
         SendAsync(
             toEmail,
             subject:  $"✅ AXI Provisioning Complete – {orgName}",
-            htmlBody: EmailTemplates.Success(toEmail, orgName, axiaAcId, _appConnSettings.AppLoginUrl),
+            htmlBody: EmailTemplates.Success(toEmail, orgName, axiaAcId, userName, _appConnSettings.AppLoginUrl),
             ct);
 
-    public Task SendFailureAsync(string toEmail, string orgName, string axiaAcId, string reason, CancellationToken ct) =>
+    public Task SendFailureAsync(string toEmail, string orgName, string axiaAcId, string userName, string reason, CancellationToken ct) =>
         SendAsync(
             toEmail,
             subject:  $"❌ AXI Provisioning Failed – {orgName}",
-            htmlBody: EmailTemplates.Failure(toEmail, orgName, axiaAcId, reason, _appConnSettings.SupportUrl),
+            htmlBody: EmailTemplates.Failure(toEmail, orgName, axiaAcId, userName, reason, _appConnSettings.SupportUrl),
             ct);
 
     // ── Core sender ──────────────────────────────────────────────────────────
