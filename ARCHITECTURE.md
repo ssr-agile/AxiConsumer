@@ -50,7 +50,6 @@ AxiConsumer/
 │   │   └── DatabaseOrchestrator.cs ← Coordinates all DB steps; owns retry + rollback logic
 │   │
 │   ├── ConfigurationFileService.cs ← Clones keys in AppSettings.ini & axapps.xml; backs up files
-│   ├── IISService.cs               ← Recycles IIS app pools via Microsoft.Web.Administration
 │   └── EmailService.cs             ← MailKit SMTP sender
 │
 ├── Handlers/
@@ -123,10 +122,6 @@ RabbitMQ Broker
 │      │   ├── Backup with timestamp
 │      │   └── Write to all destination paths
 │      │
-│      ├── IisService
-│      │   └── Recycle configured app pools in parallel 
-|      |             (Microsoft.Web.Administration)
-│      │       Per-pool failures logged, never block ack or email
 │      │
 │      └── EmailService → SMTP                                     │ │
 │          └── SendSuccessAsync / SendFailureAsync                   └─┘
@@ -182,15 +177,10 @@ PostgreSQL (single server)
           → Clone <axiadmin> node in axapps.xml
           → Backup existing files with timestamp
           → Write to AxpertWebScriptsPath, ARMWebScriptsPath, ARMAPIPath
-16.   → IisService.RecyclePoolsAsync
-          → Validate all pool names against safe-identifier regex
-          → Open ServerManager (IIS config store, requires admin)
-          → Recycle all pools in parallel (Task.WhenAll)
-          → Per-pool failures logged; never re-thrown
-17.   → EmailService.SendSuccessAsync / SendFailureAsync
+16.   → EmailService.SendSuccessAsync / SendFailureAsync
           → Build HTML from EmailTemplates
           → Connect SMTP, authenticate, send, disconnect
-18. BasicAck → message removed from queue
+17. BasicAck → message removed from queue
     (BasicNack + requeue:false on unhandled exception → dead-letter)
 ```
 
@@ -235,41 +225,6 @@ Why two, not one?
   - Keeping pools separate avoids cross-DB command accidents
   - Each pool is pre-configured once at startup (SSL, auth, timeouts)
 ```
-
----
-
-## IIS Integration & Privilege Model
-
-### How privilege is obtained
-
-| Run mode        | Mechanism                                       |
-|---|---|
-| Windows Service | Service account (Local System or dedicated admin account) |
-| Console / dev   | `app.manifest` with `requireAdministrator` → UAC elevation prompt |
-
-`Microsoft.Web.Administration` opens the IIS metabase directly — no `appcmd.exe` subprocess,
-no shell injection surface, no PATH dependency.
-
-### Why not UAC manifest alone?
-
-UAC manifests only trigger elevation for interactive (GUI/console) processes.
-The Windows Service host ignores the manifest entirely — privilege comes from the account
-the service is registered under. Configure with:
-
-    sc.exe create "RmqConsumerService" ... obj=".\LocalSystem"
-
-Or use a dedicated least-privilege account granted `IIS_IUSRS` + local admin on the IIS node.
-
-### Pool name validation
-
-Pool names are validated against `^[\w\s\-]{1,64}$` before `ServerManager` is opened.
-Invalid names abort the entire recycle sweep and are logged as errors.
-This prevents any config-injection path from reaching the IIS API.
-
-### Failure isolation
-
-Each pool recycles independently in parallel (`Task.WhenAll`).
-A failed pool logs an error but never throws — the RMQ ack and email are unaffected.
 
 ---
 
@@ -394,5 +349,3 @@ sc.exe delete "AxiConsumer"
 | **Linux / Docker** | Guard `UseWindowsService()` with `OperatingSystem.IsWindows()` |
 | **Migration rollback** | Add `down_*.sql` scripts and a `RollbackSchemaAsync` method on `ITenantProvisioningService` |
 | **Observability** | Add OpenTelemetry tracing — Npgsql and HttpClient have native OTEL instrumentation |
-| **IIS on remote nodes** | Replace `new ServerManager()` with `ServerManager.OpenRemote(hostname)` and add `IisHosts` array to config |
-| **Pool warm-up** | After recycle, HTTP GET the app's health endpoint to pre-warm before next request hits |

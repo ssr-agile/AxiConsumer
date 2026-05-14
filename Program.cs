@@ -10,6 +10,7 @@ using Serilog;
 using Serilog.Events;
 using System.Net.Http;
 
+System.IO.Directory.SetCurrentDirectory(System.AppDomain.CurrentDomain.BaseDirectory);
 
 // ── Bootstrap configuration (needed before Host is built) ────────────────────
 var configuration = new ConfigurationBuilder()
@@ -46,69 +47,80 @@ try
     Log.Information("  RMQ Consumer Service  –  Starting up");
     Log.Information("═══════════════════════════════════════════");
 
-    await Host.CreateDefaultBuilder(args)
-        .ConfigureAppConfiguration((context, config) =>
-        {
-            config.Sources.Clear(); // optional but recommended to avoid conflicts
-            config.SetBasePath(Directory.GetCurrentDirectory());
-            config.AddJsonFile("axiglobalconfig.json", optional: false, reloadOnChange: true);
-            config.AddEnvironmentVariables();
-        }).UseSerilog()
-        .UseWindowsService()                    // runs cleanly as a Windows Service or console app
-        .ConfigureServices((ctx, services) =>
-        {
-            // ── Settings ──────────────────────────────────────────────────────
-            services.Configure<RabbitMqSettings>(ctx.Configuration.GetSection("RabbitMq"));
-            services.Configure<DatabaseSettings>(ctx.Configuration.GetSection("Database"));
-            services.Configure<SmtpSettings>(ctx.Configuration.GetSection("Smtp"));
-            services.Configure<LogSettings>(ctx.Configuration.GetSection("Logging"));
-            services.Configure<AppConnectionSettings>(ctx.Configuration.GetSection("AppConnection"));
+    try
+    {
 
-            var dbSettings = configuration
-                .GetSection("Database")
-                .Get<DatabaseSettings>();
-            var adminConnStr = dbSettings.BuildConnectionString(dbSettings.AdminDatabase);
-
-            // ── Core services ─────────────────────────────────────────────────
-            // Singleton: shared across the lifetime of the app
-            services.AddSingleton<IRabbitMqConsumer, RabbitMqConsumerService>();
-            //services.AddHttpClient();
-            services.AddHttpClient("LicenseClient", client =>
+        await Host.CreateDefaultBuilder(args)
+            .ConfigureAppConfiguration((context, config) =>
             {
-                // base address + timeout set once here, not scattered in service
-                client.Timeout = TimeSpan.FromSeconds(30);
-            });
-            // Singleton DataSource for admin DB — one pool, shared safely
-            //services.AddNpgsqlDataSource(adminConnStr);
+                config.Sources.Clear(); // optional but recommended to avoid conflicts
+                //config.SetBasePath(Directory.GetCurrentDirectory()); // [Note]: On windows service - path: C:\\..\\system32
+                config.SetBasePath(AppContext.BaseDirectory);
+                //config.SetBasePath(AppDomain.CurrentDomain.BaseDirectory);
+                config.AddJsonFile("axiglobalconfig.json", optional: false, reloadOnChange: true);
+                config.AddEnvironmentVariables();
+            }).UseSerilog()
+            .UseWindowsService()                    // runs cleanly as a Windows Service or console app
+            .ConfigureServices((ctx, services) =>
+            {
+                // ── Settings ──────────────────────────────────────────────────────
+                services.Configure<RabbitMqSettings>(ctx.Configuration.GetSection("RabbitMq"));
+                services.Configure<DatabaseSettings>(ctx.Configuration.GetSection("Database"));
+                services.Configure<SmtpSettings>(ctx.Configuration.GetSection("Smtp"));
+                services.Configure<LogSettings>(ctx.Configuration.GetSection("Logging"));
+                services.Configure<AppConnectionSettings>(ctx.Configuration.GetSection("AppConnection"));
 
-            // Admin DataSource — role management, global PG operations
-            services.AddNpgsqlDataSource(
-                dbSettings.BuildConnectionString(dbSettings.AdminDatabase), serviceKey: "admin");
+                var dbSettings = configuration
+                    .GetSection("Database")
+                    .Get<DatabaseSettings>();
+                var adminConnStr = dbSettings.BuildConnectionString(dbSettings.AdminDatabase);
 
-            // Shared DataSource — all tenant schema operations (one pool, reused)
-            services.AddNpgsqlDataSource(
-                dbSettings.BuildConnectionString(dbSettings.SharedDatabase), serviceKey: "shared");
+                // ── Core services ─────────────────────────────────────────────────
+                // Singleton: shared across the lifetime of the app
+                services.AddSingleton<IRabbitMqConsumer, RabbitMqConsumerService>();
+                //services.AddHttpClient();
+                services.AddHttpClient("LicenseClient", client =>
+                {
+                    // base address + timeout set once here, not scattered in service
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                });
+                // Singleton DataSource for admin DB — one pool, shared safely
+                //services.AddNpgsqlDataSource(adminConnStr);
 
-            // Transient: fresh instance per message (created inside a DI scope)
-            services.AddTransient<IMessageProcessor, MessageProcessorService>();
-            //services.AddTransient<IDatabaseService,  DatabaseService>();
-            services.AddTransient<IEmailService,     EmailService>();
-            services.AddTransient<IAdminDbService, AdminDbService>();
-            //services.AddTransient<ITenantDbService, TenantDbService>();
-            services.AddTransient<ITenantProvisionService, TenantProvisionService>();
-            services.AddTransient<ILicenseService, LicenseService>();
-            services.AddTransient<IDatabaseOrchestrator, DatabaseOrchestrator>();
-            services.AddTransient<IConfigurationFileService, ConfigurationFileService>();
-            services.AddTransient<IIISService, IISService>();
+                // Admin DataSource — role management, global PG operations
+                services.AddNpgsqlDataSource(
+                    dbSettings.BuildConnectionString(dbSettings.AdminDatabase), serviceKey: "admin");
 
-            // ── Handlers ──────────────────────────────────────────────────────
-            services.AddTransient<IQueueHandler, AxiAdminHandler>();
+                // Shared DataSource — all tenant schema operations (one pool, reused)
+                services.AddNpgsqlDataSource(
+                    dbSettings.BuildConnectionString(dbSettings.SharedDatabase), serviceKey: "shared");
 
-            // ── Hosted worker ─────────────────────────────────────────────────
-            services.AddHostedService<Worker>();
-        })
-        .Build()
-        .RunAsync();
+                // Transient: fresh instance per message (created inside a DI scope)
+                services.AddTransient<IMessageProcessor, MessageProcessorService>();
+                //services.AddTransient<IDatabaseService,  DatabaseService>();
+                services.AddTransient<IEmailService, EmailService>();
+                services.AddTransient<IAdminDbService, AdminDbService>();
+                //services.AddTransient<ITenantDbService, TenantDbService>();
+                services.AddTransient<ITenantProvisionService, TenantProvisionService>();
+                services.AddTransient<ILicenseService, LicenseService>();
+                services.AddTransient<IDatabaseOrchestrator, DatabaseOrchestrator>();
+                services.AddTransient<IConfigurationFileService, ConfigurationFileService>();
+
+                // ── Handlers ──────────────────────────────────────────────────────
+                services.AddTransient<IQueueHandler, AxiAdminHandler>();
+
+                // ── Hosted worker ─────────────────────────────────────────────────
+                services.AddHostedService<Worker>();
+            })
+            .Build()
+            .RunAsync();
+    }
+    catch (Exception ex)
+    {
+        File.WriteAllText("fatal.log", ex.ToString());
+        System.Diagnostics.EventLog.WriteEntry("AxiConsumer", ex.ToString(), System.Diagnostics.EventLogEntryType.Error);
+        throw;
+    }
 }
 catch (Exception ex)
 {

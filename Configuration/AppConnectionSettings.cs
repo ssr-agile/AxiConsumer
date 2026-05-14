@@ -8,6 +8,4 @@ public sealed class AppConnectionSettings
     public string BackupFolderName { get; init; } = string.Empty;
     public string AppLoginUrl { get; init; } = string.Empty;
     public string SupportUrl { get; init; } = string.Empty; 
-    public string[] IISAppPools { get; init; } = [];
-    public int IISRecycleTimeoutSeconds { get; init; } = 30;
 }
