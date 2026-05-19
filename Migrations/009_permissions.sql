@@ -1,4 +1,4 @@
--- Tenant ownership and isolation permissions.
+﻿-- Tenant ownership and isolation permissions.
 -- This script must run after tables, sequences, constraints, indexes, views, functions, and triggers are created.
 
 ALTER SCHEMA {schema} OWNER TO {schema};

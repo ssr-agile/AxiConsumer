@@ -2165,6 +2165,50 @@ return query execute v_sql;
 
 END; $function$;
 
+
+-- =============================================================================
+-- START OF ApplicationTemplate update
+-- =============================================================================
+-- golden dump has ApplicationTemplate property already so deleting and updating it again , this can be handled in one place
+
+DELETE FROM {schema}.axctx1 where axcontext = 'ApplicationTemplate';
+
+INSERT INTO {schema}.axctx1(atype, axcontext) VALUES('Property', 'ApplicationTemplate');
+
+INSERT INTO {schema}.axctx1(atype, axcontext) VALUES('Property', 'Store dropdown values in Localstorage');
+ 
+------------
+
+DELETE FROM {schema}.axpstructconfigprops where configprops = 'ApplicationTemplate'; 
+
+INSERT INTO {schema}.axpstructconfigprops
+(axpstructconfigpropsid, cancel, sourceid, mapname, username, modifiedon, createdby, createdon, wkid, app_level, app_desc, app_slevel, cancelremarks, wfroles, configprops, propcode, description, dupchk, context, ptype, caction, chyperlink, cfields, alltstructs, alliviews, alluserroles)
+VALUES(99999990000001, 'F', 0, NULL, 'admin', '2026-04-24 11:24:21.000', 'admin', '2019-11-15 15:18:53.000', NULL, 1, 1, NULL, NULL, NULL, 'ApplicationTemplate', 'General', 'Using this property you can change the application layout template.', 'configtypeApplicationTemplate', NULL, 'All', 'F', 'F', 'F', 'F', 'F', 'F');
+ 
+
+INSERT INTO {schema}.axpstructconfigprops
+(axpstructconfigpropsid, cancel, sourceid, mapname, username, modifiedon, createdby, createdon, wkid, app_level, app_desc, app_slevel, cancelremarks, wfroles, configprops, propcode, description, dupchk, context, ptype, caction, chyperlink, cfields, alltstructs, alliviews, alluserroles)
+VALUES(99999990000002, 'F', 0, NULL, 'admin', '2025-10-30 10:39:54.000', 'admin', '2025-09-30 11:23:35.000', NULL, 1, 1, NULL, NULL, NULL, 'Store dropdown values in Localstorage', 'Store dropdown values in Localstorage', 'Store dropdown values in Localstorage', 'configtypeStore dropdown values in Localstorage', NULL, 'Tstruct', 'F', 'F', 'F', 'T', 'F', 'F');
+ 
+------------
+
+DELETE FROM {schema}.axpstructconfig where asprops = 'ApplicationTemplate'; 
+ 
+INSERT INTO {schema}.axpstructconfig
+(axpstructconfigid, cancel, sourceid, mapname, username, modifiedon, createdby, createdon, wkid, app_level, app_desc, app_slevel, cancelremarks, wfroles, asprops, setype, props, context, propvalue1, uploadfiletype, propvalue2, propsval, alluserroles, structcaption, structname, structelements, structelements1, sfield, icolumn, sbutton, hlink, stype, userroles, dupchk, purpose)
+VALUES(99999990000003, 'F', 0, NULL, 'admin', '2026-04-24 11:22:39.000', 'admin', '2026-03-16 11:57:36.000', NULL, 1, 1, NULL, NULL, NULL, 'ApplicationTemplate', 'All', 'General', NULL, 'AxiCMDMainPage.html', NULL, NULL, 'AxiCMDMainPage.html', 'F', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ALL', 'ApplicationTemplateGeneralALL', NULL);
+ 
+INSERT INTO {schema}.axpstructconfig
+(axpstructconfigid, cancel, sourceid, mapname, username, modifiedon, createdby, createdon, wkid, app_level, app_desc, app_slevel, cancelremarks, wfroles, asprops, setype, props, context, propvalue1, uploadfiletype, propvalue2, propsval, alluserroles, structcaption, structname, structelements, structelements1, sfield, icolumn, sbutton, hlink, stype, userroles, dupchk, purpose)
+VALUES(99999990000004, 'F', 0, NULL, 'admin', '2026-04-24 11:28:43.000', 'admin', '2025-09-30 11:29:17.000', NULL, 1, 1, NULL, NULL, NULL, 'Store dropdown values in Localstorage', 'Tstruct', 'Store dropdown values in Localstorage', NULL, 'true', NULL, NULL, 'true', 'F', 'ALL Forms', 'ALL Forms', NULL, NULL, NULL, NULL, NULL, NULL, 'Tstruct', 'ALL', 'Store dropdown values in LocalstorageALL FormsStore dropdown values in LocalstorageALL', NULL);
+
+
+-- =============================================================================
+-- END OF ApplicationTemplate update
+-- =============================================================================
+
+
+
 -- =============================================================================
 -- SECTION: OWNERSHIP AND PERMISSIONS FOR OBJECTS CREATED IN THIS SCRIPT
 -- =============================================================================

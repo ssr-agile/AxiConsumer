@@ -345,12 +345,6 @@ ALTER TABLE ONLY {schema}.axcustomviews
 ALTER TABLE ONLY {schema}.axerrorlog
     ADD CONSTRAINT axerrorlog_pkey PRIMARY KEY (username, eventdate);
 
-ALTER TABLE ONLY {schema}.axi_command_prompts
-    ADD CONSTRAINT axi_command_prompts_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY {schema}.axi_commands
-    ADD CONSTRAINT axi_commands_pkey PRIMARY KEY (cmdtoken);
-
 ALTER TABLE ONLY {schema}.axiconmenu
     ADD CONSTRAINT axiconmenu_pkey PRIMARY KEY (parentpagename);
 

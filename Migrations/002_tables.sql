@@ -1316,24 +1316,6 @@ CREATE TABLE {schema}.axgrouptstructs (
     ftransid character varying(10)
 );
 
-CREATE TABLE {schema}.axi_command_prompts (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    cmdtoken integer,
-    wordpos integer,
-    prompt character varying(200),
-    promptsource character varying(500),
-    promptparams character varying(100),
-    promptvalues character varying(500),
-    props character varying(100),
-    extraparams character varying(1000),
-    requesturl character varying(2000)
-);
-
-CREATE TABLE {schema}.axi_commands (
-    cmdtoken integer NOT NULL,
-    command_group character varying(50) NOT NULL,
-    command character varying(50) NOT NULL
-);
 
 CREATE TABLE {schema}.axiconmenu (
     parentpagename character varying(50) NOT NULL,
@@ -2295,16 +2277,6 @@ CREATE TABLE {schema}.axp_transcheck (
     sessionid character varying(50)
 );
 
-CREATE TABLE {schema}.axp_tstructprops (
-    name character varying(5),
-    caption character varying(500),
-    keyfield character varying(200),
-    userconfigured character(1),
-    createdon character varying(30),
-    updatedon character varying(30),
-    createdby character varying(100),
-    updatedby character varying(100)
-);
 
 CREATE TABLE {schema}.axp_versionchangedetails (
     verno character varying(50),
