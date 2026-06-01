@@ -1,11 +1,12 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting.WindowsServices;
-using Npgsql;
 using AxiConsumer;
 using AxiConsumer.Configuration;
 using AxiConsumer.Handlers;
 using AxiConsumer.Services;
 using AxiConsumer.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.WindowsServices;
+using Npgsql;
 using Serilog;
 using Serilog.Events;
 using System.Net.Http;
@@ -27,6 +28,9 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Is(logCfg.EnableDebug ? LogEventLevel.Debug : LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("RabbitMQ",  LogEventLevel.Warning)
+    .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+    .MinimumLevel.Override("Npgsql", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .Enrich.WithMachineName()
     .WriteTo.Console(
@@ -69,23 +73,29 @@ try
                 services.Configure<SmtpSettings>(ctx.Configuration.GetSection("Smtp"));
                 services.Configure<LogSettings>(ctx.Configuration.GetSection("Logging"));
                 services.Configure<AppConnectionSettings>(ctx.Configuration.GetSection("AppConnection"));
+                services.Configure<RedisSettings>(ctx.Configuration.GetSection("Redis"));
 
-                var dbSettings = configuration
-                    .GetSection("Database")
-                    .Get<DatabaseSettings>();
+                var cfg = ctx.Configuration;
+                var dbSettings = cfg.GetSection("Database").Get<DatabaseSettings>();
                 var adminConnStr = dbSettings.BuildConnectionString(dbSettings.AdminDatabase);
+                var axiClientUrl = cfg.GetValue<string>("AxiClientAPI");
+
+                // ── Redis ─────────────────────────────────────────────────
+
+                var redisCfg = cfg.GetSection("Redis").Get<RedisSettings>();
+
+                services.AddStackExchangeRedisCache(o =>
+                    o.Configuration = redisCfg?.GetConnectionString);
 
                 // ── Core services ─────────────────────────────────────────────────
                 // Singleton: shared across the lifetime of the app
                 services.AddSingleton<IRabbitMqConsumer, RabbitMqConsumerService>();
-                //services.AddHttpClient();
-                services.AddHttpClient("LicenseClient", client =>
+                services.AddHttpClient("AxiClient", client =>
                 {
                     // base address + timeout set once here, not scattered in service
+                    client.BaseAddress = new Uri(axiClientUrl?.TrimEnd('/') + "/");
                     client.Timeout = TimeSpan.FromSeconds(30);
                 });
-                // Singleton DataSource for admin DB — one pool, shared safely
-                //services.AddNpgsqlDataSource(adminConnStr);
 
                 // Admin DataSource — role management, global PG operations
                 services.AddNpgsqlDataSource(
@@ -97,14 +107,14 @@ try
 
                 // Transient: fresh instance per message (created inside a DI scope)
                 services.AddTransient<IMessageProcessor, MessageProcessorService>();
-                //services.AddTransient<IDatabaseService,  DatabaseService>();
                 services.AddTransient<IEmailService, EmailService>();
                 services.AddTransient<IAdminDbService, AdminDbService>();
-                //services.AddTransient<ITenantDbService, TenantDbService>();
                 services.AddTransient<ITenantProvisionService, TenantProvisionService>();
-                services.AddTransient<ILicenseService, LicenseService>();
                 services.AddTransient<IDatabaseOrchestrator, DatabaseOrchestrator>();
-                services.AddTransient<IConfigurationFileService, ConfigurationFileService>();
+                services.AddTransient<IConfigurationFileService, ConfigurationFileService>(); 
+                services.AddSingleton<IPasswordService, PasswordService>();
+
+                services.AddScoped<ITokenStore, RedisTokenStore>();
 
                 // ── Handlers ──────────────────────────────────────────────────────
                 services.AddTransient<IQueueHandler, AxiAdminHandler>();
@@ -124,8 +134,8 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Host terminated unexpectedly.");
-    return 1;
+    Log.Fatal(ex, "Critical startup failure.");
+    throw;
 }
 finally
 {

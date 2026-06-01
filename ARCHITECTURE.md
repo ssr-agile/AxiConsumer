@@ -27,7 +27,7 @@ AxiConsumer/
 │
 ├── Models/                         ← Pure data models, no logic
 │   ├── QueueMessage.cs             ← Outer RMQ envelope
-│   ├── AxiAdminModels.cs           ← axiadmin payload (email, orgname, axiacid)
+│   ├── AxiAdminModels.cs           ← axiadmin payload (email, orgname, AxiAccId)
 │   └── LicenseModels.cs            ← LicenseRequest / LicenseResponse
 │
 ├── Services/
@@ -148,16 +148,16 @@ PostgreSQL (single server)
  4. Create DI scope (isolates all services per message)
  5. MessageProcessorService resolves handler by ApiName
  6. AxiAdminHandler.HandleAsync
- 7.   → Deserialise queuedata → AxiAdminData (email, orgname, axiacid)
- 8.   → DatabaseOrchestrator.ProvisionTenantAsync(axiacid, email)
+ 7.   → Deserialise queuedata → AxiAdminData (email, orgname, AxiAccId)
+ 8.   → DatabaseOrchestrator.ProvisionTenantAsync(AxiAccId, email)
  9.       a. AdminDbService.EnsureRoleAsync       [admin DataSource]
-              → CREATE ROLE "<axiacid>" LOGIN PASSWORD '...' (idempotent)
+              → CREATE ROLE "<AxiAccId>" LOGIN PASSWORD '...' (idempotent)
 10.       b. TenantProvisioningService.ProvisionSchemaAsync  [shared DataSource]
               → Open single connection + transaction
               → EnsureMigrationLogAsync (CREATE TABLE IF NOT EXISTS public.__schema_migrations)
               → For each .sql file in Migrations/ (ordinal order):
                   - Skip if already logged for this schema (idempotent re-run)
-                  - Replace {schema} → "<axiacid>"
+                  - Replace {schema} → "<AxiAccId>"
                   - Execute (CommandTimeout = 0 — large schemas can take time)
                   - Log to __schema_migrations with SHA-256 checksum
               → COMMIT
@@ -281,7 +281,7 @@ Why two, not one?
 | `ARMWebScriptsPath` | Secondary destination for config files |
 | `ARMAPIPath` | API service config destination |
 | `BackupFolderName` | Sub-folder name for timestamped backups |
-| `AppLoginUrl` | Base URL prepended with axiacid in success email |
+| `AppLoginUrl` | Base URL prepended with AxiAccId in success email |
 | `SupportUrl` | Support link included in failure email |
 
 ### `Logging`

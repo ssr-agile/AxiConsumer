@@ -5,7 +5,7 @@ namespace AxiConsumer.Templates;
 
 public static class EmailTemplates
 {
-    public static string Success(string email, string orgName, string axiaAcId, string userName, string loginUrl)
+    public static string Success(string email, string orgName, string axiaAcId, string userName, string password, string loginUrl)
         => Wrap("#4f46e5", "#4338ca", "Welcome to AXI 🚀",
             $"""
             <p style="font-size:18px;font-weight:600;margin-bottom:10px;color:#ffffff;">
@@ -27,6 +27,7 @@ public static class EmailTemplates
             {
                 ("Username", userName),
                 ("Email", email),
+                ("Password", password),
                 ("Account ID", axiaAcId),
                 ("Status", "Active"),
             })}

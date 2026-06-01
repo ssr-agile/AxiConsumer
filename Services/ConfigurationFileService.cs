@@ -20,7 +20,7 @@ public class ConfigurationFileService : IConfigurationFileService
         _logger = logger;
     }
 
-    public async Task<bool> UpdateConfigsAsync(string newAxiAcId, CancellationToken ct)
+    public async Task<bool> UpdateConfigsAsync(string newAxiAccId, CancellationToken ct)
     {
         // 1. Load source files
         string iniPath = Path.Combine(_appConnSettings.AxpertWebScriptsPath, "AppSettings.ini");
@@ -31,13 +31,13 @@ public class ConfigurationFileService : IConfigurationFileService
         // 2. Process AppSettings.ini (JSON Logic)
         var jsonContent = await File.ReadAllTextAsync(iniPath, ct);
         var root = JsonNode.Parse(jsonContent);
-        CloneJsonSection(root!, "appconnections", templateConn, newAxiAcId, sharedDB);
-        CloneJsonSection(root!, "appsettings", templateConn, newAxiAcId, sharedDB);
+        CloneJsonSection(root!, "appconnections", templateConn, newAxiAccId, sharedDB);
+        CloneJsonSection(root!, "appsettings", templateConn, newAxiAccId, sharedDB);
         string updatedJson = root!.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
 
         // 3. Process axapps.xml (XML Logic)
         var xmlDoc = XDocument.Load(xmlPath);
-        CloneXmlNode(xmlDoc, templateConn, newAxiAcId, sharedDB);
+        CloneXmlNode(xmlDoc, templateConn, newAxiAccId, sharedDB);
         string updatedXml = xmlDoc.ToString();
 
         string[] configDestinationPaths = [_appConnSettings.AxpertWebScriptsPath, _appConnSettings.ARMWebScriptsPath];

@@ -3,6 +3,7 @@ using Npgsql;
 using Polly;
 using AxiConsumer.Configuration;
 using AxiConsumer.Services.Interfaces;
+using AxiConsumer.Models;
 
 namespace AxiConsumer.Services;
 
@@ -11,27 +12,25 @@ public sealed class DatabaseOrchestrator : IDatabaseOrchestrator
     private readonly IAdminDbService _admin;
     private readonly ITenantProvisionService _tenant;
     //private readonly ITenantDbService _tenant;
-    private readonly ILicenseService _license;
     private readonly DatabaseSettings _settings;
     private readonly ILogger<DatabaseOrchestrator> _logger;
 
     public DatabaseOrchestrator(
         IAdminDbService admin, //ITenantDbService tenant,
         ITenantProvisionService tenent,
-        ILicenseService license, IOptions<DatabaseSettings> settings,
+        IOptions<DatabaseSettings> settings,
         ILogger<DatabaseOrchestrator> logger)
     {
         _admin = admin;
         _tenant = tenent;
-        _license = license;
         _settings = settings.Value;
         _logger = logger;
         //_provisioning = provision;
     }
 
-    public async Task<bool> ProvisionTenantAsync(string axiaAcId, string email, string userName, CancellationToken ct)
+    public async Task<bool> ProvisionTenantAsync(AxiAdminData data, string hashedPassword, CancellationToken ct)
     {
-        var id = Sanitise(axiaAcId);
+        var id = Sanitise(data.AxiAccId);
 
         try
         {
@@ -47,14 +46,17 @@ public sealed class DatabaseOrchestrator : IDatabaseOrchestrator
             // 2. Schema + all migration scripts (shared DB)
             await _tenant.ProvisionSchemaAsync(id, _settings.DefaultRolePassword, ct);
 
-            // 3. Seed initial user into the new schema
-            await _tenant.SeedUserAsync(id, email, userName, ct);
+            // 3. Add account & user into the control schema
+            await _tenant.AddAccountAsync(data, ct);
 
-            // 4. External license activation
-            var lic = await _license.ActivateAsync(id, email, ct);
+            // 4. Seed initial user into the new schema
+            await _tenant.SeedUserAsync(id, data.Email, data.Username, data.NickName, hashedPassword, ct);
 
-            // 5. Write license keys into tenant schema
-            await _tenant.UpdateUserKeysAsync(id, email, lic.AuthKey!, lic.UserKey!, ct);
+            // 5. External license activation
+            var lic = await _tenant.ActivateAsync(id, data.Email, ct);
+
+            // 6. Write license keys into tenant schema
+            await _tenant.UpdateUserKeysAsync(id, data.Email, lic.AuthKey!, lic.UserKey!, ct);
 
             _logger.LogInformation("Provisioning complete for '{Id}'.", id);
             return true;

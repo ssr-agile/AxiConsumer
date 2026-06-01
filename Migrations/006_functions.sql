@@ -6384,7 +6384,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION {schema}.setup_new_user(p_username text, p_email text, p_nickname text) RETURNS void
+CREATE FUNCTION {schema}.setup_new_user(p_username text, p_email text, p_nickname text, p_password text) RETURNS void
     LANGUAGE plpgsql
     SET search_path = {schema}, pg_catalog
     AS $$
@@ -6401,11 +6401,11 @@ BEGIN
     ) 
     VALUES (
         p_username, 
-        '22723bbd4217a0abf6d3e68073c7603d', -- Default Pwd Hash
+        p_password,
         'default', 2, 'T', 'T', 'T', 
         p_email, 'T', 'F', 'T', 'T', 'T', 
         'T', 'T', 'T', 'T', 'T', 
-        p_username, p_nickname, '22723bbd4217a0abf6d3e68073c7603d', 
+        p_username, p_nickname, p_password, 
         NULL, 'T', 'F', 'default', 'T', 
         'Config studio,Developer studio,Export data,Import data', 0,
         NULL, 'F', 15, 99999999999991

@@ -1,12 +1,20 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using AxiConsumer.Configuration;
+using AxiConsumer.Models;
+using AxiConsumer.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using AxiConsumer.Configuration;
-using AxiConsumer.Services.Interfaces;
+using Org.BouncyCastle.Crypto;
+using System.Diagnostics.Metrics;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Runtime;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
 
 namespace AxiConsumer.Services;
 
@@ -18,16 +26,24 @@ public sealed class TenantProvisionService : ITenantProvisionService
 
     private readonly NpgsqlDataSource _sharedDs;
     private readonly string _migrationsPath;
-    private readonly ILogger<TenantProvisionService> _logger;
+    private readonly ILogger<TenantProvisionService> _logger; 
+    private readonly IHttpClientFactory _factory;
+    private readonly DatabaseSettings _settings;
+    private readonly ITokenStore _tokenStore;
 
     public TenantProvisionService(
         [FromKeyedServices("shared")] NpgsqlDataSource sharedDs,
         IOptions<DatabaseSettings> settings,
-        ILogger<TenantProvisionService> logger)
+        IHttpClientFactory factory, 
+        ILogger<TenantProvisionService> logger,
+        ITokenStore tokenStore)
     {
         _sharedDs = sharedDs;
         _migrationsPath = Path.GetFullPath(settings.Value.MigrationsPath);
         _logger = logger;
+        _factory = factory;
+        _settings = settings.Value;
+        _tokenStore = tokenStore;
     }
 
     public async Task ProvisionSchemaAsync(string schemaName, string userPassword, CancellationToken ct)
@@ -128,17 +144,20 @@ public sealed class TenantProvisionService : ITenantProvisionService
         }
     }
 
-    public async Task SeedUserAsync(string dbName, string email, string userName, CancellationToken ct)
+    public async Task SeedUserAsync(string dbName, string email, string userName, string nickName, string hashedPassword, CancellationToken ct)
     {
         await using var conn = await _sharedDs.OpenConnectionAsync(ct);
 
-        var name = !string.IsNullOrEmpty(userName) ? 
+        var uname = !string.IsNullOrEmpty(userName) ? 
                             userName : email.Contains('@') 
                             ? email[..email.IndexOf('@')] : email;
-        await using var cmd = new NpgsqlCommand($"SELECT \"{dbName}\".setup_new_user(@u, @e, @n)", conn);
-        cmd.Parameters.AddWithValue("u", name);
+        var nname = !string.IsNullOrEmpty(nickName) ? nickName : uname;
+
+        await using var cmd = new NpgsqlCommand($"SELECT \"{dbName}\".setup_new_user(@u, @e, @n, @p)", conn);
+        cmd.Parameters.AddWithValue("u", uname);
         cmd.Parameters.AddWithValue("e", email);
-        cmd.Parameters.AddWithValue("n", name);
+        cmd.Parameters.AddWithValue("n", nname);
+        cmd.Parameters.AddWithValue("p", hashedPassword);
         await cmd.ExecuteNonQueryAsync(ct);
         _logger.LogInformation("Seed user created in '{Db}'.", dbName);
     }
@@ -159,6 +178,70 @@ public sealed class TenantProvisionService : ITenantProvisionService
             throw new InvalidOperationException($"User '{email}' not found in {dbName}.axusers — keys not updated.");
     }
 
+    public async Task<bool> AddAccountAsync(AxiAdminData data, CancellationToken ct)
+    {
+        var client = _factory.CreateClient("AxiClient");
+        string url = "api/AxiClient/AddAxiAccount";
+        var payload = new {
+            Username = data.Username,
+            Email = data.Email,
+            OrgName = data.OrgName,
+            NickName = string.IsNullOrEmpty(data.NickName) ? data.Username : data.NickName,
+            AxiAccId = data.AxiAccId,
+            ContactPersonName = data.ContactPersonName,
+            MobileNo = data.MobileNo,
+            TaxNo = data.TaxNo,
+            State = data.State,
+            Country = data.Country,
+            Address = data.Address,
+            CountryCode = data.CountryCode,
+            Region = data.Region,
+            IsVerified = data.IsVerified,
+            AuthProvider = data.AuthProvider,
+            SsoId = data.SsoId,
+            SchemaName  = data.SchemaName,
+            DatabaseName = data.DatabaseName,
+            AxiRedisKey = data.AxiRedisKey
+        };
+
+        _logger.LogInformation("Creating Axi Account & User for '{AxiAccountId}' / '{Email}'.", data.AxiAccId, data.Email);
+
+        string token = await RequireTokenAsync(data.AxiRedisKey, ct);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client.PostAsJsonAsync(url, payload, ct);
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(cancellationToken: ct);
+
+        if (result is null || !result.Success)
+            throw new InvalidOperationException($"Account creation failed: {result?.Message ?? "empty response"}");
+        return true;
+    }
+
+    public async Task<LicenseResponse> ActivateAsync(string dbName, string email, CancellationToken ct)
+    {
+        var client = _factory.CreateClient("AxiClient");
+        string url = "api/AxiClient/AxiPrimaryUser";
+        var payload = new LicenseRequest { UserName = email, SchemaName = dbName, AppDomain = _settings.AppDomain };
+
+        _logger.LogInformation("Activating license for '{Db}' / '{Email}'.", dbName, email);
+
+        //string token = await RequireTokenAsync(data.AxiRedisKey, ct);
+
+        //client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client.PostAsJsonAsync(url, payload, ct);
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<LicenseResponse>(cancellationToken: ct);
+
+        if (result is null || string.IsNullOrEmpty(result.AuthKey) || string.IsNullOrEmpty(result.UserKey))
+            throw new InvalidOperationException($"License activation failed: {result?.Message ?? "empty response"}");
+
+        return result;
+    }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
@@ -253,4 +336,13 @@ public sealed class TenantProvisionService : ITenantProvisionService
 
     private static string QuoteLiteral(string value) =>
         "'" + value.Replace("'", "''", StringComparison.Ordinal) + "'";
+
+    /// <summary>Reads session token; throws 401 if none exists (SECURE endpoints).</summary>
+    private async Task<string> RequireTokenAsync(string sessionId, CancellationToken ct)
+    {
+        var session = await _tokenStore.GetAsync(sessionId, ct);
+        if (session is null || string.IsNullOrEmpty(session.Token))
+            throw new UnauthorizedAccessException("Token not found, unauthorized access.");
+        return session.Token;
+    }
 }

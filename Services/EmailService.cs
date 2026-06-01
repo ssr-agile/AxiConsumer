@@ -22,12 +22,16 @@ public sealed class EmailService : IEmailService
         _logger   = logger;
     }
 
-    public Task SendSuccessAsync(string toEmail, string orgName, string axiaAcId, string userName, CancellationToken ct) =>
-        SendAsync(
+    public async Task SendSuccessAsync(string toEmail, string orgName, string axiaAcId, string userName, string sessionId, string password, CancellationToken ct)
+    {
+        string url = $"{_appConnSettings.AppLoginUrl.TrimEnd('/')}?sessionId={sessionId}";
+        await SendAsync(
             toEmail,
-            subject:  $"✅ AXI Provisioning Complete – {orgName}",
-            htmlBody: EmailTemplates.Success(toEmail, orgName, axiaAcId, userName, _appConnSettings.AppLoginUrl),
+            subject: $"✅ AXI Provisioning Complete – {orgName}",
+            htmlBody: EmailTemplates.Success(toEmail, orgName, axiaAcId, userName, password, url),
             ct);
+        //return Task.CompletedTask;
+    }
 
     public Task SendFailureAsync(string toEmail, string orgName, string axiaAcId, string userName, string reason, CancellationToken ct) =>
         SendAsync(

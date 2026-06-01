@@ -11,7 +11,7 @@ public sealed class DatabaseSettings
     public string MigrationsPath { get; init; } = "Migrations";
     public string AxiControlSchemaName { get; init; } = "axiadmin";
     public string DefaultRolePassword { get; init; } = "log";
-    public string LicenseApiUrl { get; init; } = string.Empty;
+    public string AxiClientApiUrl { get; init; } = string.Empty;
     public string AppDomain { get; init; } = string.Empty;
     public string BuildConnectionString(string database) =>
         $"Host={Host};Port={Port};Username={Username};Password={Password};Database={database};Pooling=true;";
