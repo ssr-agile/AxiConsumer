@@ -6408,7 +6408,7 @@ BEGIN
         p_username, p_nickname, p_password, 
         NULL, 'T', 'F', 'default', 'T', 
         'Config studio,Developer studio,Export data,Import data', 0,
-        NULL, 'F', 15, 99999999999991
+        NULL, 'T', 14, 99999999999991
     );
 
     -- 2. Insert into axuserlevelgroups
