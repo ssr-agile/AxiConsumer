@@ -6670,3 +6670,159 @@ CREATE FUNCTION {schema}.trg_axprocessdefv2() RETURNS trigger
 	end if;
 end; 
 $$;
+
+-- AxGet & AxPut Functions
+
+--DROP FUNCTION {schema}.fn_axdbget(varchar, numeric);
+
+CREATE OR REPLACE FUNCTION {schema}.fn_axdbget(ptransid character varying, precordid numeric DEFAULT 0)
+ RETURNS TABLE(transid character varying, dcno character varying, griddc character varying, sqltext text)
+ LANGUAGE plpgsql
+AS $function$
+declare 
+rec record;
+rec2 record;
+v_sql text;
+v_primarydctable varchar;
+v_fldnamesary varchar[] DEFAULT  ARRAY[]::varchar[];
+v_fldname_joinsary varchar[] DEFAULT  ARRAY[]::varchar[];
+v_fldname_col varchar;
+v_fldname_normalized varchar;
+v_fldname_srctbl varchar;
+v_fldname_srcfld varchar;
+v_fldname_allowempty varchar;
+v_fldname_dctablename varchar;
+v_fldname_dcflds text;
+v_fldname_normalizedtables varchar[] DEFAULT  ARRAY[]::varchar[];
+v_emptyary varchar[] DEFAULT  ARRAY[]::varchar[];
+v_allflds varchar;
+v_dcdefaultcols varchar;
+begin
+	select tablename into v_primarydctable from axpdc where tstruct = ptransid and dname ='dc1';
+for rec in select string_agg(dname,',' order by dname) dname, asgrid ,lower(tablename) tablename 
+from axpdc where tstruct = ptransid 
+group by asgrid ,lower(tablename)
+order by 1 
+loop
+			select concat(tablename,'=',string_agg(str,'|'))  into v_allflds From(
+			select tablename, concat(fname,'~',srckey,'~',srctf,'~',srcfld,'~',allowempty) str,dcname,ordno
+			from axpflds where tstruct=ptransid and savevalue='T' and lower(tablename) = rec.tablename and datatype !='i'
+			order by dcname ,ordno)a group by a.tablename;				
+	if rec.tablename = v_primarydctable then 		
+		select string_agg(fnames,',') into v_dcdefaultcols 
+		from 
+		(select concat(v_primarydctable,'.',unnest(string_to_array(v_primarydctable||'id,cancel,sourceid,mapname,username,modifiedon,createdby,createdon,wkid,app_level,app_desc,app_slevel,cancelremarks,wfroles',',')))fnames)a;
+	end if;	
+	if rec.asgrid = 'F' and rec.tablename != v_primarydctable then		
+		v_dcdefaultcols = concat(rec.tablename,'.',v_primarydctable||'id,',rec.tablename,'.',rec.tablename||'id');
+	elsif rec.asgrid = 'T' and rec.tablename != v_primarydctable then
+		v_dcdefaultcols =  concat(rec.tablename,'.',v_primarydctable||'id,',rec.tablename,'.',rec.tablename||'id,',rec.tablename,'.',rec.tablename||'row');
+	end if;
+				FOR rec2 IN
+    		select unnest(string_to_array(split_part(unnest(string_to_array(v_allflds,'^')),'=',2),'|')) fldname    		    	       			
+				loop		    	
+					v_fldname_col := split_part(rec2.fldname,'~',1);
+					v_fldname_normalized := split_part(rec2.fldname,'~',2);
+					v_fldname_srctbl := split_part(rec2.fldname,'~',3);
+					v_fldname_srcfld := split_part(rec2.fldname,'~',4);	
+					v_fldname_allowempty := split_part(rec2.fldname,'~',5);				
+					if v_fldname_normalized ='F' then 						
+						v_fldnamesary := array_append(v_fldnamesary,concat(rec.tablename,'.',v_fldname_col)::varchar);					
+					elsif v_fldname_normalized ='T' then	
+						v_fldnamesary := array_append(v_fldnamesary,concat(v_fldname_col,'.',v_fldname_srcfld,' ',v_fldname_col)::varchar);	
+						v_fldname_joinsary := array_append(v_fldname_joinsary,concat(case when v_fldname_allowempty='F' then ' join ' else ' left join ' end,v_fldname_srctbl,' ',v_fldname_col,' on ',rec.tablename,'.',v_fldname_col,' = ',v_fldname_col,'.',v_fldname_srctbl,'id')::Varchar);
+						v_fldname_normalizedtables := array_append(v_fldname_normalizedtables,lower(v_fldname_srctbl));
+					end if;		
+			    end loop;
+	transid = ptransid;
+	dcno = rec.dname;
+	griddc = rec.asgrid;
+	sqltext = concat('select ',v_dcdefaultcols,',',array_to_string(v_fldnamesary,','),' from ',rec.tablename,' ',array_to_string(v_fldname_joinsary,' '),' where ',rec.tablename,'.',v_primarydctable||'id= :recordid');
+	v_fldnamesary:= v_emptyary;
+	v_fldname_joinsary:= v_emptyary;
+	return next;
+end loop;
+END; $function$
+;
+
+--DROP FUNCTION {schema}.fn_axdbput(varchar, varchar);
+
+
+CREATE OR REPLACE FUNCTION {schema}.fn_axdbput(ptransid character varying, ponlysource character varying DEFAULT 'T'::character varying)
+ RETURNS TABLE(cnd character varying, transid character varying, dcno character varying, griddc character varying, sqltext text)
+ LANGUAGE plpgsql
+AS $function$
+declare 
+rec record;
+v_dcflds text;
+v_primarytable varchar;
+v_dc1defaultcols varchar ;
+v_insertcolumns varchar;
+begin
+select lower(tablename) into v_primarytable from axpdc where tstruct = ptransid and dname='dc1';
+for rec in select string_agg(dname,',' order by dname) dname, asgrid ,lower(tablename) tablename from axpdc where tstruct = ptransid 
+group by asgrid ,lower(tablename)
+order by 1 
+loop
+	select string_agg(':'||fname,',' order by ordno) into v_dcflds from axpflds where tstruct = ptransid and lower(tablename)= rec.tablename 
+	and savevalue ='T';
+	if rec.tablename = v_primarytable then 		
+		v_dc1defaultcols :=':cancel,:sourceid,:mapname,:username,:modifiedon,:createdby,:createdon,:wkid,:app_level,:app_desc,:app_slevel,:cancelremarks,:wfroles,';
+		v_insertcolumns := concat(':'||v_primarytable||'id,',v_dc1defaultcols,v_dcflds);
+	end if;
+	if rec.asgrid = 'F' and rec.tablename != v_primarytable then		
+		v_insertcolumns := concat(':'||v_primarytable||'id,',rec.tablename||'id,',v_dcflds);
+	elsif rec.asgrid = 'T' and rec.tablename != v_primarytable then
+		v_insertcolumns :=  concat(':'||v_primarytable||'id,',':'||rec.tablename||'id,',':'||rec.tablename||'row,',v_dcflds);
+	end if;
+	cnd :='source';
+	transid := ptransid;
+	dcno := rec.dname;
+	griddc := rec.asgrid;
+	sqltext := concat('insert into ',rec.tablename,'(',replace(v_insertcolumns,':',''),')values(',v_insertcolumns,')');
+	return next;
+end loop;  
+return;	
+END; 
+$function$
+;
+
+
+--DROP FUNCTION {schema}.fn_axdbput_getrecid(int4, varchar, int4);
+
+
+CREATE SEQUENCE {schema}.seq_axdb_recordid
+    START 1
+    INCREMENT 1
+    NO CYCLE;
+
+   
+GRANT USAGE, SELECT ON SEQUENCE {schema}.seq_axdb_recordid TO {schema};
+
+
+CREATE OR REPLACE FUNCTION {schema}.fn_axdbput_getrecid(
+    psiteno    integer,
+    pnoofrows  integer
+)
+RETURNS TABLE (recordid varchar(16)) AS
+$$
+DECLARE
+    v_seq_num     bigint;
+    v_pad_length  int;
+    v_final       varchar;
+BEGIN
+    IF length(psiteno::varchar) = 1 THEN
+        v_pad_length := 15;
+    ELSIF length(psiteno::varchar) = 2 THEN
+        v_pad_length := 14;
+    ELSIF length(psiteno::varchar) = 3 THEN
+        v_pad_length := 13;
+    END IF;
+    FOR i IN 1 .. pnoofrows LOOP
+        v_seq_num := nextval('seq_axdb_recordid');
+        v_final := psiteno || lpad(v_seq_num::varchar, v_pad_length, '0');
+        recordid := v_final;
+        RETURN NEXT;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
